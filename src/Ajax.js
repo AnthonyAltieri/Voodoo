@@ -3,19 +3,22 @@
  * @author Bharat Batra on 10/14/16.
  */
 
-export const send = (type, url, params, withCredentials = false)  => {
+export const send = (type, url, params = {}, withCredentials = false)  => {
+  console.log('send()')
   return new Promise((resolve, reject) => {
     const ajax = new XMLHttpRequest();
-    ajax.open(type, PREFIX + url, true);
+    ajax.open(type, url, true);
     ajax.setRequestHeader('Content-Type', 'application/json;charset=UTF-8');
     ajax.withCredentials = withCredentials;
     ajax.onreadystatechange = () => {
-      if (ajax.status === 200 && ajax.readyState === 4) {
+      if (ajax.readyState !== XMLHttpRequest.DONE) return;
+      console.log('ajax done')
+      if (ajax.status === 200) {
+        let response = null;
         try {
-          resolve({
-            code: 200,
-            payload: JSON.parse(ajax.payload),
-          });
+          if (!!ajax.payload) {
+            response = JSON.parse(ajax.payload);
+          }
         } catch (e) {
           reject({
             code: 200,
@@ -23,9 +26,13 @@ export const send = (type, url, params, withCredentials = false)  => {
               info: 'JSON parse failed',
             }
           });
-          return;
         }
+        resolve({
+          code: 200,
+          payload: response,
+        });
       } else {
+        console.log('ajax status ' + ajax.status);
         switch (ajax.status) {
           // Redirection
           case 300: {
@@ -62,10 +69,11 @@ export const send = (type, url, params, withCredentials = false)  => {
         }
       }
     };
-
-    console.log('params', params);
+    let parameters;
     try {
-      ajax.send(JSON.stringify(params));
+      if (!!params) {
+        parameters = JSON.stringify(params)
+      }
     } catch (e) {
       reject({
         error: {
@@ -73,8 +81,9 @@ export const send = (type, url, params, withCredentials = false)  => {
           info: 'Stringify Failed: ' + e
         }
       });
-      return;
     }
+    ajax.send(parameters);
+    return;
   })
 };
 

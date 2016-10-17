@@ -21,6 +21,7 @@ app.get('/', function(req, res) {
 
 app.post('/test', function(req, res) {
   console.log('message body', JSON.stringify(req.body, null, 2))
+  res.sendStatus(200)
 });
 
 app.post('/isAlive', function(req, res) {

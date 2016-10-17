@@ -6,56 +6,59 @@
 import { send } from './Ajax';
 
 class Heartbeat {
-  constructor(heartbeatEndpoint, type, secondsPerBeat = 60) {
+  constructor(heartbeatEndpoint, type, secondsPerBeat = 1) {
     this.source = heartbeatEndpoint;
-    this.milisecondsPerBeat = secondsPerBeat * 1000;
     this.isAlive = false;
-    this.hasInit = false;
     this.listeners = [];
-    this.init(type);
+    this.milisecondsPerBeat = secondsPerBeat * 1000;
+    this.beatType = type;
+    this.keepAlive(type);
   }
 
-  async init(type) {
-    await this.beat(type);
-    this.keepAlive();
+  beginPanic() {
+    if (typeof this.pacemaker !== 'undefined') {
+      clearInterval(this.pacemaker)
+    }
   }
 
-  async beat(type = 'GET') {
-    const response = await send(type);
-    if (response.error) {
-      this.isAlive = false;
-      return {
-        error: response.error,
+  endPanic() {
+    this.keepAlive(this.beatType);
+  }
+
+  keepAlive(type) {
+    console.log('keep Alive');
+    this.pacemaker = window.setInterval(() => {
+      this.beat(type);
+    }, this.milisecondsPerBeat);
+  }
+
+
+  beat(type = 'GET') {
+    console.log('beat')
+    const notFiveHundred = (n) => (n < 500 && n > 599);
+    send(type, this.source)
+      .then((response) => {
+        console.log('send.then()')
+        const { code } = response;
+        if (typeof code === 'undefined')  {
+          throw new Error(`response code should not be undefined`);
+        }
+        this.isAlive = notFiveHundred(response.code);
+        // If there are listeners waiting for the heartbeat to become
+        // alive again then execute them
+        if (this.isAlive && this.listeners.length > 0) {
+          this.listeners.forEach((l) => { l() });
+        }
+      }).catch((error) => {console.log('send.catch()', error)});
+  }
+
+
+  subscribe(listener, type) {
+      const currentListeners = this.listeners;
+      this.listeners = [...this.listeners, listener];
+      return () => {
+        this.listeners = currentListeners;
       }
-    }
-    if (response.code === 200) {
-      this.listeners.forEach((l) => {
-        l();
-      });
-      this.isAlive = true;
-    } else {
-      this.isAlive = false;
-      throw new Error (`Response code: ${response.code} invalid, awaiting 200`);
-    }
-    this.hasInit = true;
-  }
-
-  keepAlive() {
-    this.pacemaker = window.setInterval(
-      () => {
-        this.beat()
-          .then(() => {})
-          .catch((error) => {})
-      }, this.milisecondsPerBeat
-    )
-  }
-
-  subscribe(listeners) {
-    const currentListeners = this.listeners;
-    this.listeners = [...this.listeners, listeners];
-    return () => {
-      this.listeners = currentListeners;
-    }
   }
 
 }
