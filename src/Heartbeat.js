@@ -35,7 +35,7 @@ class Heartbeat {
 
   beat(type = 'GET') {
     console.log('beat')
-    const notFiveHundred = (n) => (n < 500 && n > 599);
+    const notFourHundred = (n) => (n < 400 && n > 499);
     send(type, this.source)
       .then((response) => {
         console.log('send.then()')
@@ -43,7 +43,7 @@ class Heartbeat {
         if (typeof code === 'undefined')  {
           throw new Error(`response code should not be undefined`);
         }
-        this.isAlive = notFiveHundred(response.code);
+        this.isAlive = notFourHundred(response.code);
         // If there are listeners waiting for the heartbeat to become
         // alive again then execute them
         if (this.isAlive && this.listeners.length > 0) {

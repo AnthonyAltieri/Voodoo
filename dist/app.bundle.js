@@ -59,11 +59,11 @@
 
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-	var SERVER_PREFIX = 'http://localhost:9000'; /**
-	                                              * @author Anthony Altieri on 10/15/16.
-	                                              */
+	var SERVER_PREFIX = 'http://159.203.234.179'; /**
+	                                               * @author Anthony Altieri on 10/15/16.
+	                                               */
 
-	var HEARTBEAT_ENDPOINT = 'http://localhost:9000/isAlive';
+	var HEARTBEAT_ENDPOINT = 'http://159.203.234.179/isAlive';
 	var FIVE_SECONDS = 5;
 	var ONE_SECOND = 1;
 	var TWO_SECONDS = 2;
@@ -73,7 +73,7 @@
 	var panic = void 0;
 
 	function test() {
-	  panic = new _Panic2.default(HEARTBEAT_ENDPOINT, TYPE, TWO_SECONDS, ONE_THIRD_SECOND);
+	  panic = new _Panic2.default(HEARTBEAT_ENDPOINT, TYPE, FIVE_SECONDS, ONE_THIRD_SECOND);
 	}
 
 	var testButton = document.createElement('button');
@@ -282,8 +282,8 @@
 	      var type = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 'GET';
 
 	      console.log('beat');
-	      var notFiveHundred = function notFiveHundred(n) {
-	        return n < 500 && n > 599;
+	      var notFourHundred = function notFourHundred(n) {
+	        return n < 400 && n > 499;
 	      };
 	      (0, _Ajax.send)(type, this.source).then(function (response) {
 	        console.log('send.then()');
@@ -292,7 +292,7 @@
 	        if (typeof code === 'undefined') {
 	          throw new Error('response code should not be undefined');
 	        }
-	        _this2.isAlive = notFiveHundred(response.code);
+	        _this2.isAlive = notFourHundred(response.code);
 	        // If there are listeners waiting for the heartbeat to become
 	        // alive again then execute them
 	        if (_this2.isAlive && _this2.listeners.length > 0) {
