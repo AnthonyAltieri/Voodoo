@@ -6,7 +6,12 @@
 
 export const set = (key, value) => {
   try {
-    const serializedValue = JSON.stringify(value);
+    const serializedValue = JSON.stringify(value, (k, v) => {
+      if (typeof v === 'function') {
+        return v + '';
+      }
+      return v;
+    });
     if (typeof window.localStorage === 'undefined') {
       document.cookie = `${key}=${serializedValue}`;
     } else {

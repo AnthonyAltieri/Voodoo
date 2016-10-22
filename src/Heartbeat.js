@@ -29,25 +29,32 @@ class Heartbeat {
    * options {Object} The options that are to be applied to the
    * heartbeat singleton. These include:
    *   - type: HTTP_TYPE the type of
-   *   - secondsPerBeat: number
+   *   - secondsPerBeat: {number} how many seconds to wait in between each beat
+   *   - secondsPerPanicBeat: {number} when in panic mode how many seconds to wait
+   *   between each beat
    *   - withCredentials {boolean} if to put withCredentials on the Ajax
    * request
    */
   constructor(endpoint: string, options: options): void {
-    const { type, secondsPerBeat, withCredentials } = options;
+    const { type, secondsPerBeat, secondsPerPanicBeat, withCredentials } = options;
     const ONE_SECOND = 1;
+    const THREE_SECONDS = 3;
     const secondsToMilliseconds = (seconds) => {
       const CONVERSION = 1000;
       return seconds * CONVERSION;
     };
     this.milisecondsPerBeat = secondsPerBeat
       ? secondsToMilliseconds(secondsPerBeat)
+      : secondsToMilliseconds(THREE_SECONDS);
+    this.milisecondsPerPanicBeat = secondsPerPanicBeat
+      ? secondsToMilliseconds(secondsPerPanicBeat)
       : secondsToMilliseconds(ONE_SECOND);
     this.type = type;
     this.endpoint = endpoint;
     this.withCredentials = withCredentials;
-    // not in panic by default
-    this.inPanic = false;
+    this.aliveListeners = [];
+    this.deadListeners = [];
+    this.isPanic = false;
     this.init();
   }
 
@@ -73,11 +80,29 @@ class Heartbeat {
         const isOnline = code => code !== 0;
         console.log(`beat code: ${code}`);
         this.isAlive = isOnline(code);
+        if (this.isAlive) {
+          this.aliveListeners.forEach(l => { l() });
+        } else {
+          this.deadListeners.forEach(l => { l() });
+        }
       })
       .catch((fail: AjaxFail) => {
         // Is not alive on server error or offline
         this.isAlive = false;
+        this.deadListeners.forEach(l => { l() });
       })
+  }
+
+  startPanic() {
+    this.isPanic = true;
+    this.panicPacemaker = window.setInterval(() => {
+      this.beat();
+    }, this.milisecondsPerPanicBeat)
+  }
+
+  stopPanic() {
+    this.isPanic = false;
+    if (!!this.panicPacemaker) clearInterval(this.panicPacemaker);
   }
 
   /**
@@ -85,6 +110,27 @@ class Heartbeat {
    */
   stop(): void {
     if (!!this.pacemaker) clearInterval(this.pacemaker);
+  }
+
+  subscribe(type: string = 'ALIVE' | 'DEAD', listener) {
+    switch (type) {
+      case 'ALIVE': {
+        const listeners = this.aliveListeners;
+        this.aliveListeners = [...this.aliveListeners, listener];
+        return () => { this.aliveListeners = listeners };
+      }
+
+      case 'DEAD': {
+        const listeners = this.deadListeners;
+        this.deadListeners = [...this.deadListeners, listener];
+        return () => { this.deadListeners = listeners };
+      }
+
+      default: {
+        throw new Error(`subscribe type ${type} not allowed`);
+      }
+    }
+
   }
 
   forceDead(): void {

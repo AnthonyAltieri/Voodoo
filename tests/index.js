@@ -22,7 +22,7 @@ function test() {
   panic = new Panic(HEARTBEAT_ENDPOINT, {
     type: TYPE,
     secondsPerBeat: FIVE_SECONDS,
-  })
+  });
 }
 
 function testPost() {
@@ -30,8 +30,9 @@ function testPost() {
 }
 
 function testLocal() {
-  Storage.set('key', 'foobar');
-  console.log(`retrieved: ${Storage.get('key')}`);
+  Storage.set('key', 'value');
+  const obj = Storage.get('key');
+  obj.foo();
 }
 
 const testButton = document.createElement('button');

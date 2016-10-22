@@ -18,7 +18,12 @@ const LS_KEY = 'PanicCallQueue';
 class Panic {
   constructor(endpoint: string, options: options) {
     this.heartbeat = new Heartbeat(endpoint, options);
+    // Flag if the call Queue is being dealt with
+    this.isHandlingCallQueue = false;
+    this.unsubscribeOnAlive = this.heartbeat.subscribe('ALIVE', onAlive.bind(this));
+    this.unsubscribeOnDead = this.heartbeat.subscribe('DEAD', onDead.bind(this));
   }
+
 
   http(type: HTTP_TYPE, url, params, withCredentials) {
     console.log(`http: ${type}`);
@@ -60,6 +65,24 @@ class Panic {
 
   post(url, params, withCredentials = true) {
     this.http('POST', url, params, withCredentials);
+  }
+}
+
+function onAlive() {
+  if (this.heartbeat.isPanic) {
+    this.heartbeat.stopPanic();
+  }
+  console.log('alive')
+}
+
+function onDead() {
+  if (!this.heartbeat) return;
+  console.log('dead');
+  if (!this.heartbeat.isPanic) {
+    this.heartbeat.startPanic();
+  }
+  if (!this.isHandlingCallQueue) {
+    // TODO: Start handling call queue
   }
 }
 

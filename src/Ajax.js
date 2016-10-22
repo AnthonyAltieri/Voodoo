@@ -22,7 +22,6 @@ export const send = (type, url, params = {}, withCredentials = false)  => {
           }
         });
       } else {
-        console.log('ajax', ajax);
         try {
           const payload = JSON.stringify(ajax.payload);
           resolve({

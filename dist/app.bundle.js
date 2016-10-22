@@ -57,7 +57,7 @@
 
 	var _Panic2 = _interopRequireDefault(_Panic);
 
-	var _Storage = __webpack_require__(4);
+	var _Storage = __webpack_require__(3);
 
 	var Storage = _interopRequireWildcard(_Storage);
 
@@ -92,8 +92,9 @@
 	}
 
 	function testLocal() {
-	  Storage.set('key', 'foobar');
-	  console.log('retrieved: ' + Storage.get('key'));
+	  Storage.set('key', 'value');
+	  var obj = Storage.get('key');
+	  obj.foo();
 	}
 
 	var testButton = document.createElement('button');
@@ -125,11 +126,11 @@
 	                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      * @author Anthony Altieri on 10/22/16.
 	                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      */
 
-	var _Storage = __webpack_require__(4);
+	var _Storage = __webpack_require__(3);
 
 	var Storage = _interopRequireWildcard(_Storage);
 
-	var _Ajax = __webpack_require__(3);
+	var _Ajax = __webpack_require__(4);
 
 	var Ajax = _interopRequireWildcard(_Ajax);
 
@@ -152,6 +153,10 @@
 	    _classCallCheck(this, Panic);
 
 	    this.heartbeat = new _Heartbeat2.default(endpoint, options);
+	    // Flag if the call Queue is being dealt with
+	    this.isHandlingCallQueue = false;
+	    this.unsubscribeOnAlive = this.heartbeat.subscribe('ALIVE', onAlive.bind(this));
+	    this.unsubscribeOnDead = this.heartbeat.subscribe('DEAD', onDead.bind(this));
 	  }
 
 	  _createClass(Panic, [{
@@ -207,81 +212,28 @@
 	  return Panic;
 	}();
 
+	function onAlive() {
+	  if (this.heartbeat.isPanic) {
+	    this.heartbeat.stopPanic();
+	  }
+	  console.log('alive');
+	}
+
+	function onDead() {
+	  if (!this.heartbeat) return;
+	  console.log('dead');
+	  if (!this.heartbeat.isPanic) {
+	    this.heartbeat.startPanic();
+	  }
+	  if (!this.isHandlingCallQueue) {
+	    // TODO: Start handling call queue
+	  }
+	}
+
 	exports.default = Panic;
 
 /***/ },
 /* 3 */
-/***/ function(module, exports) {
-
-	'use strict';
-
-	Object.defineProperty(exports, "__esModule", {
-	  value: true
-	});
-	/**
-	 * @author Anthony Altieri on 10/14/16.
-	 * @author Bharat Batra on 10/14/16.
-	 */
-
-	var send = exports.send = function send(type, url) {
-	  var params = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
-	  var withCredentials = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : false;
-
-	  console.log('send()');
-	  return new Promise(function (resolve, reject) {
-	    var ajax = new XMLHttpRequest();
-	    ajax.open(type, url, true);
-	    ajax.setRequestHeader('Content-Type', 'application/json;charset=UTF-8');
-	    ajax.withCredentials = withCredentials;
-	    ajax.onreadystatechange = function () {
-	      if (ajax.readyState !== XMLHttpRequest.DONE) return;
-	      var isFivehundred = function isFivehundred(code) {
-	        return code >= 500 && code <= 599;
-	      };
-	      if (isFivehundred(ajax.status)) {
-	        reject({
-	          code: 500,
-	          error: {
-	            code: 500,
-	            info: 'Server Error'
-	          }
-	        });
-	      } else {
-	        console.log('ajax', ajax);
-	        try {
-	          var payload = JSON.stringify(ajax.payload);
-	          resolve({
-	            code: ajax.status,
-	            payload: payload
-	          });
-	        } catch (error) {
-	          reject({
-	            code: undefined,
-	            error: error
-	          });
-	        }
-	      }
-	    };
-	    var parameters = void 0;
-	    try {
-	      if (!!params) {
-	        parameters = JSON.stringify(params);
-	      }
-	    } catch (e) {
-	      reject({
-	        error: {
-	          code: null,
-	          info: 'Stringify Failed: ' + e
-	        }
-	      });
-	    }
-	    ajax.send(parameters);
-	    return;
-	  });
-	};
-
-/***/ },
-/* 4 */
 /***/ function(module, exports) {
 
 	'use strict';
@@ -299,7 +251,12 @@
 
 	var set = exports.set = function set(key, value) {
 	  try {
-	    var serializedValue = JSON.stringify(value);
+	    var serializedValue = JSON.stringify(value, function (k, v) {
+	      if (typeof v === 'function') {
+	        return v + '';
+	      }
+	      return v;
+	    });
 	    if (typeof window.localStorage === 'undefined') {
 	      document.cookie = key + '=' + serializedValue;
 	    } else {
@@ -341,6 +298,76 @@
 	};
 
 /***/ },
+/* 4 */
+/***/ function(module, exports) {
+
+	'use strict';
+
+	Object.defineProperty(exports, "__esModule", {
+	  value: true
+	});
+	/**
+	 * @author Anthony Altieri on 10/14/16.
+	 * @author Bharat Batra on 10/14/16.
+	 */
+
+	var send = exports.send = function send(type, url) {
+	  var params = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
+	  var withCredentials = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : false;
+
+	  console.log('send()');
+	  return new Promise(function (resolve, reject) {
+	    var ajax = new XMLHttpRequest();
+	    ajax.open(type, url, true);
+	    ajax.setRequestHeader('Content-Type', 'application/json;charset=UTF-8');
+	    ajax.withCredentials = withCredentials;
+	    ajax.onreadystatechange = function () {
+	      if (ajax.readyState !== XMLHttpRequest.DONE) return;
+	      var isFivehundred = function isFivehundred(code) {
+	        return code >= 500 && code <= 599;
+	      };
+	      if (isFivehundred(ajax.status)) {
+	        reject({
+	          code: 500,
+	          error: {
+	            code: 500,
+	            info: 'Server Error'
+	          }
+	        });
+	      } else {
+	        try {
+	          var payload = JSON.stringify(ajax.payload);
+	          resolve({
+	            code: ajax.status,
+	            payload: payload
+	          });
+	        } catch (error) {
+	          reject({
+	            code: undefined,
+	            error: error
+	          });
+	        }
+	      }
+	    };
+	    var parameters = void 0;
+	    try {
+	      if (!!params) {
+	        parameters = JSON.stringify(params);
+	      }
+	    } catch (e) {
+	      reject({
+	        error: {
+	          code: null,
+	          info: 'Stringify Failed: ' + e
+	        }
+	      });
+	    }
+	    ajax.send(parameters);
+	    return;
+	  });
+	};
+
+/***/ },
 /* 5 */
 /***/ function(module, exports, __webpack_require__) {
 
@@ -350,17 +377,21 @@
 	  value: true
 	});
 
+	var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
+
 	var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
 	/**
 	 * @author Anthony Altieri on 10/22/16.
 	 */
 
-	var _Ajax = __webpack_require__(3);
+	var _Ajax = __webpack_require__(4);
 
 	var Ajax = _interopRequireWildcard(_Ajax);
 
 	function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
+
+	function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
 
 	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
@@ -372,7 +403,9 @@
 	   * options {Object} The options that are to be applied to the
 	   * heartbeat singleton. These include:
 	   *   - type: HTTP_TYPE the type of
-	   *   - secondsPerBeat: number
+	   *   - secondsPerBeat: {number} how many seconds to wait in between each beat
+	   *   - secondsPerPanicBeat: {number} when in panic mode how many seconds to wait
+	   *   between each beat
 	   *   - withCredentials {boolean} if to put withCredentials on the Ajax
 	   * request
 	   */
@@ -381,19 +414,23 @@
 
 	    var type = options.type;
 	    var secondsPerBeat = options.secondsPerBeat;
+	    var secondsPerPanicBeat = options.secondsPerPanicBeat;
 	    var withCredentials = options.withCredentials;
 
 	    var ONE_SECOND = 1;
+	    var THREE_SECONDS = 3;
 	    var secondsToMilliseconds = function secondsToMilliseconds(seconds) {
 	      var CONVERSION = 1000;
 	      return seconds * CONVERSION;
 	    };
-	    this.milisecondsPerBeat = secondsPerBeat ? secondsToMilliseconds(secondsPerBeat) : secondsToMilliseconds(ONE_SECOND);
+	    this.milisecondsPerBeat = secondsPerBeat ? secondsToMilliseconds(secondsPerBeat) : secondsToMilliseconds(THREE_SECONDS);
+	    this.milisecondsPerPanicBeat = secondsPerPanicBeat ? secondsToMilliseconds(secondsPerPanicBeat) : secondsToMilliseconds(ONE_SECOND);
 	    this.type = type;
 	    this.endpoint = endpoint;
 	    this.withCredentials = withCredentials;
-	    // not in panic by default
-	    this.inPanic = false;
+	    this.aliveListeners = [];
+	    this.deadListeners = [];
+	    this.isPanic = false;
 	    this.init();
 	  }
 
@@ -431,10 +468,38 @@
 	        };
 	        console.log('beat code: ' + code);
 	        _this2.isAlive = isOnline(code);
+	        if (_this2.isAlive) {
+	          _this2.aliveListeners.forEach(function (l) {
+	            l();
+	          });
+	        } else {
+	          _this2.deadListeners.forEach(function (l) {
+	            l();
+	          });
+	        }
 	      }).catch(function (fail) {
 	        // Is not alive on server error or offline
 	        _this2.isAlive = false;
+	        _this2.deadListeners.forEach(function (l) {
+	          l();
+	        });
 	      });
+	    }
+	  }, {
+	    key: 'startPanic',
+	    value: function startPanic() {
+	      var _this3 = this;
+
+	      this.isPanic = true;
+	      this.panicPacemaker = window.setInterval(function () {
+	        _this3.beat();
+	      }, this.milisecondsPerPanicBeat);
+	    }
+	  }, {
+	    key: 'stopPanic',
+	    value: function stopPanic() {
+	      this.isPanic = false;
+	      if (!!this.panicPacemaker) clearInterval(this.panicPacemaker);
 	    }
 
 	    /**
@@ -445,6 +510,51 @@
 	    key: 'stop',
 	    value: function stop() {
 	      if (!!this.pacemaker) clearInterval(this.pacemaker);
+	    }
+	  }, {
+	    key: 'subscribe',
+	    value: function subscribe() {
+	      var _this4 = this;
+
+	      var type = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 'ALIVE' | 'DEAD';
+	      var listener = arguments[1];
+
+	      switch (type) {
+	        case 'ALIVE':
+	          {
+	            var _ret = function () {
+	              var listeners = _this4.aliveListeners;
+	              _this4.aliveListeners = [].concat(_toConsumableArray(_this4.aliveListeners), [listener]);
+	              return {
+	                v: function v() {
+	                  _this4.aliveListeners = listeners;
+	                }
+	              };
+	            }();
+
+	            if ((typeof _ret === 'undefined' ? 'undefined' : _typeof(_ret)) === "object") return _ret.v;
+	          }
+
+	        case 'DEAD':
+	          {
+	            var _ret2 = function () {
+	              var listeners = _this4.deadListeners;
+	              _this4.deadListeners = [].concat(_toConsumableArray(_this4.deadListeners), [listener]);
+	              return {
+	                v: function v() {
+	                  _this4.deadListeners = listeners;
+	                }
+	              };
+	            }();
+
+	            if ((typeof _ret2 === 'undefined' ? 'undefined' : _typeof(_ret2)) === "object") return _ret2.v;
+	          }
+
+	        default:
+	          {
+	            throw new Error('subscribe type ' + type + ' not allowed');
+	          }
+	      }
 	    }
 	  }, {
 	    key: 'forceDead',
