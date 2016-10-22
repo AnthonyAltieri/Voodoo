@@ -32,7 +32,7 @@ class Heartbeat {
    * heartbeat singleton. These include:
    *   - httpType: HTTP_TYPE the type of
    *   - secondsPerBeat: number
-   * withCredentials {boolean} if to put withCredentials on the Ajax
+   *   - withCredentials {boolean} if to put withCredentials on the Ajax
    * request
    */
   constructor(endpoint: string, options: options): void {
