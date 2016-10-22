@@ -1,66 +1,94 @@
+// @flow
+
 /**
- * @author Anthony Altieri on 10/14/16.
- * @author Bharat Batra on 10/14/16.
+ * @author Anthony Altieri on 10/22/16.
  */
 
-import { send } from './Ajax';
-
-class Heartbeat {
-  constructor(heartbeatEndpoint, type, secondsPerBeat = 1) {
-    this.source = heartbeatEndpoint;
-    this.isAlive = false;
-    this.listeners = [];
-    this.milisecondsPerBeat = secondsPerBeat * 1000;
-    this.beatType = type;
-    this.keepAlive(type);
-  }
-
-  beginPanic() {
-    if (typeof this.pacemaker !== 'undefined') {
-      clearInterval(this.pacemaker)
-    }
-  }
-
-  endPanic() {
-    this.keepAlive(this.beatType);
-  }
-
-  keepAlive(type) {
-    console.log('keep Alive');
-    this.pacemaker = window.setInterval(() => {
-      this.beat(type);
-    }, this.milisecondsPerBeat);
-  }
+import * as Ajax from 'Ajax';
 
 
-  beat(type = 'GET') {
-    console.log('beat')
-    const notFourHundred = (n) => (n < 400 && n > 499);
-    send(type, this.source)
-      .then((response) => {
-        console.log('send.then()')
-        const { code } = response;
-        if (typeof code === 'undefined')  {
-          throw new Error(`response code should not be undefined`);
-        }
-        this.isAlive = notFourHundred(response.code);
-        // If there are listeners waiting for the heartbeat to become
-        // alive again then execute them
-        if (this.isAlive && this.listeners.length > 0) {
-          this.listeners.forEach((l) => { l() });
-        }
-      }).catch((error) => {console.log('send.catch()', error)});
-  }
 
-
-  subscribe(listener, type) {
-      const currentListeners = this.listeners;
-      this.listeners = [...this.listeners, listener];
-      return () => {
-        this.listeners = currentListeners;
-      }
-  }
-
+type HTTP_TYPE = 'POST' | 'GET';
+type options = {
+  type: HTTP_TYPE,
+  secondsPerBeat: number,
+  withCredentials: boolean,
+};
+type AjaxResult = {
+  code: number,
+  payload: Object,
+};
+type AjaxFail = {
+  code: number,
+  error: Object,
 }
 
-export default Heartbeat;
+class Heartbeat {
+  /**
+   * endpoint {String} The URI of the endpoint on the server that
+   * will be used to determine connection status
+   *
+   * options {Object} The options that are to be applied to the
+   * heartbeat singleton. These include:
+   *   - httpType: HTTP_TYPE the type of
+   *   - secondsPerBeat: number
+   * withCredentials {boolean} if to put withCredentials on the Ajax
+   * request
+   */
+  constructor(endpoint: string, options: options): void {
+    const { type, secondsPerBeat, withCredentials } = options;
+    const ONE_SECOND = 1;
+    this.milisecondsPerBeat = secondsPerBeat
+      ? secondsToMiliseconds(secondsPerBeat)
+      : secondsToMiliseconds(ONE_SECOND);
+    this.type = type;
+    this.endpoint = endpoint;
+    this.withCredentials = withCredentials;
+    // not in panic by default
+    this.inPanic = false;
+  }
+
+  /**
+   * Initializes the beat interval
+   */
+  init(): void {
+    this.pacemaker = window.setInterval(() => {
+      this.beat();
+    }, this.milisecondsPerBeat);
+
+  }
+
+  /**
+   * Ping the server to determine if the server is working/client is
+   * online
+   */
+  beat(): void {
+    Ajax
+      .send(this.type, this.endpoint, {}, this.withCredentials)
+      .then((result: AjaxResult) => {
+        const { code, payload } = result;
+        const isOnline = code => code !== 0;
+        this.isAlive = isOnline(code);
+      })
+      .catch((fail: AjaxFail) => {
+        // Is not alive on server error or offline
+        this.isAlive = false;
+      })
+  }
+
+  /**
+   * Stops the interval (pacemaker) that pings the server periodically (beat)
+   */
+  stop(): void {
+    if (!!this.pacemaker) clearInterval(this.pacemaker);
+  }
+
+  forceDead(): void {
+    this.isAlive = false;
+  }
+}
+
+function secondsToMilliseconds(seconds) {
+  const CONVERSION = 1000;
+  return seconds * CONVERSION;
+}

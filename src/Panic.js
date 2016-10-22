@@ -1,23 +1,56 @@
 /**
- * @author Anthony Altieri on 10/14/16.
- * @author Bharat Batra on 10/14/16.
+ * @author Anthony Altieri on 10/22/16.
  */
 
-import Heartbeat from './Heartbeat';
-import { send } from './Ajax';
-import * as Storage from './Storage';
+import * as Storage from 'Storage';
+import * as Ajax from './Ajax';
 
+type Panic = {
 
-const FLATLINE = 'flatline';
+};
+type HTTP_TYPE = 'POST' | 'GET';
+type options = {
+  type: HTTP_TYPE,
+  secondsPerBeat: number,
+  withCredentials: boolean,
+};
+
+const LS_KEY = 'PanicCallQueue';
 
 class Panic {
-  constructor(heartbeatEndpoint, type, secondsPerBeat, panicSecondsPerBeat = 10) {
-    console.log('init()');
-    if (typeof heartbeatEndpoint === 'undefined') {
-      throw new Error('Must have a valid heartbeat endpoint');
+  constructor(endpoint: string, options: options) {
+    this.heartbeat = new Heartbeat(endpoint, options);
+  }
+
+  http(type: HTTP_TYPE, url, params, withCredentials) {
+    if (this.heartbeat.isAlive) {
+      Ajax
+        .send(type, url, params, withCredentials)
+        .then(() => {})
+        .catch(() => {
+          // NOTE: Might want to add some sort of functionality to
+          // guarantee that the http call after forceDead() uses
+          // offline functionality
+          this.heartbeat.forceDead();
+          this.http(type, url, params, withCredentials);
+        })
+    } else {
+      // TODO: Implement panic mode
+      try {
+        const call = JSON.stringify(`${type}**${url}**${params}**${withCredentials}$$$${new Date()}`);
+        let callQueue = Storage.get(LS_KEY);
+        if (!callQueue) {
+          callQueue = [];
+        }
+        // Add call to queue
+        // TODO: Sort [...calQueue, call] by time
+        callQueue = [...callQueue, call];
+        // Save in local storage
+        Storage.set(LS_KEY, callQueue);
+      } catch (e) {
+        // Silently fail
+      }
     }
-    this.panicMilisecondsPerBeat = panicSecondsPerBeat;
-    this.heartbeat = new Heartbeat(heartbeatEndpoint, type, secondsPerBeat);
   }
 
   get(url, params, withCredentials = true) {
@@ -27,60 +60,7 @@ class Panic {
   post(url, params, withCredentials = true) {
     this.http('POST', url, params, withCredentials);
   }
-  http(type, url, params, withCredentials) {
-    if (this.heartbeat.isAlive) {
-      // If the heartbeat is alive send the HTTP request
-      send(type, url, params, withCredentials)
-    } else {
-      // If the heartbeat is dead, determine if panic mode as been enabled
-      if (!this.isPanic) {
-        this.isPanic = true;
-        this.heartbeat.beginPanic();
-        this.crashcart = window.setInterval(
-          () => {
-            this.heartbeat.beat();
-          }, this.panicMilisecondsPerBeat
-        );
-        const unsubscribe = this.heartbeat.subscribe(() => {
-          clearInterval(this.crashcart);
-          this.isPanic = false;
-          this.heartbeat.endPanic();
-          const flatlineActions = Storage.get(FLATLINE);
-          if (typeof flatlineActions !== 'undefined') {
-            flatlineActions.forEach((a) => {
-              // TODO: Deal with dead data
-              const [toCall, time] = a.split('&');
-              const type = toCall.split(':')[0];
-              const [url, params, withCredentials] = toCall.split(',');
-              switch (type) {
-                case 'GET': {
-                  this.get(url, params, withCredentials);
-                  break;
-                }
-                case 'POST': {
-                  this.post(url, params, withCredentials);
-                  break;
-                }
-              }
-            });
-
-          }
-          unsubscribe();
-        });
-        Storage.set(FLATLINE, '[]');
-      }
-      const flatline = Storage.get(FLATLINE);
-      Storage.set([
-        ...flatline,
-        `${type}:${url},${params},${withCredentials}&time:${new Date().getTime()}`]
-      );
-    }
-  }
-
-}
+};
 
 
 
-
-
-export default Panic;

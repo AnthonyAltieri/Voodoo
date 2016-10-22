@@ -12,60 +12,27 @@ export const send = (type, url, params = {}, withCredentials = false)  => {
     ajax.withCredentials = withCredentials;
     ajax.onreadystatechange = () => {
       if (ajax.readyState !== XMLHttpRequest.DONE) return;
-      console.log('ajax done')
-      if (ajax.status === 200) {
-        let response = null;
-        try {
-          if (!!ajax.payload) {
-            response = JSON.parse(ajax.payload);
+      const isFivehundred = (code) => code >= 500 && code <= 599;
+      if (isFivehundred(code)) {
+        reject({
+          code: 500,
+          error: {
+            code: 500,
+            info: 'Server Error',
           }
-        } catch (e) {
-          reject({
-            code: 200,
-            error: {
-              info: 'JSON parse failed',
-            }
-          });
-        }
-        resolve({
-          code: 200,
-          payload: response,
         });
       } else {
-        console.log('ajax status ' + ajax.status);
-        switch (ajax.status) {
-          // Redirection
-          case 300: {
-            // Do nothing
-            reject({
-              code: 300,
-            });
-            return;
-          }
-
-          // Client Error
-          case 400: {
-            reject({
-              code: 400,
-              error: {
-                code: 400,
-                info: 'Client Error',
-              }
-            });
-            return;
-          }
-
-          // Server Error
-          case 500: {
-            reject({
-              code: 500,
-              error: {
-                code: 500,
-                info: 'Server Error',
-              }
-            });
-            return;
-          }
+        try {
+          const payload = JSON.stringify(ajax.payload);
+          resolve({
+            code: ajax.code,
+            payload,
+          })
+        } catch (error) {
+          reject({
+            code: undefined,
+            error,
+          })
         }
       }
     };
