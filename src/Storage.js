@@ -6,7 +6,7 @@
 
 export const set = (key, value) => {
   try {
-    const serializedValue = JSON.serialize(value);
+    const serializedValue = JSON.stringify(value);
     if (typeof window.localStorage === 'undefined') {
       document.cookie = `${key}=${serializedValue}`;
     } else {
@@ -24,7 +24,7 @@ export const get = (key) => {
       const [cookieKey, cookieValue] = c.split('=');
       if (key === cookieKey) {
         try {
-          return JSON.serialize(cookieValue);
+          return JSON.stringify(cookieValue);
         } catch (e) {
           return false;
         }

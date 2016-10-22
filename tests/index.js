@@ -3,6 +3,7 @@
  */
 
 import Panic from '../src/Panic';
+import * as Storage from '../src/Storage';
 
 
 const SERVER_PREFIX = 'http://159.203.234.179';
@@ -17,11 +18,34 @@ const TYPE = 'POST';
 let panic;
 
 function test() {
-  panic = new Panic(HEARTBEAT_ENDPOINT, TYPE, FIVE_SECONDS, ONE_THIRD_SECOND);
+  console.log('Beginning test()');
+  panic = new Panic(HEARTBEAT_ENDPOINT, {
+    type: TYPE,
+    secondsPerBeat: FIVE_SECONDS,
+  })
+}
+
+function testPost() {
+  panic.post(`${SERVER_PREFIX}/test`, { foo: 'bar' });
+}
+
+function testLocal() {
+  Storage.set('key', 'foobar');
+  console.log(`retrieved: ${Storage.get('key')}`);
 }
 
 const testButton = document.createElement('button');
 testButton.onclick = test;
+testButton.innerHTML = 'Start Test';
 document.body.appendChild(testButton);
 
+const postButton = document.createElement('button');
+postButton.onclick = testPost;
+postButton.innerHTML = 'Send Post';
+document.body.appendChild(postButton);
+
+const storageButton = document.createElement('button');
+storageButton.onclick = testLocal;
+storageButton.innerHTML = 'Storage test';
+document.body.appendChild(storageButton);
 

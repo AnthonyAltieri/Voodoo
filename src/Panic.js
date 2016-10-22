@@ -2,12 +2,10 @@
  * @author Anthony Altieri on 10/22/16.
  */
 
-import * as Storage from 'Storage';
+import * as Storage from './Storage';
 import * as Ajax from './Ajax';
+import Heartbeat from './Heartbeat';
 
-type Panic = {
-
-};
 type HTTP_TYPE = 'POST' | 'GET';
 type options = {
   type: HTTP_TYPE,
@@ -23,6 +21,8 @@ class Panic {
   }
 
   http(type: HTTP_TYPE, url, params, withCredentials) {
+    console.log(`http: ${type}`);
+    console.log(`heartbeat.isAlive: ${this.heartbeat.isAlive}`)
     if (this.heartbeat.isAlive) {
       Ajax
         .send(type, url, params, withCredentials)
@@ -36,8 +36,9 @@ class Panic {
         })
     } else {
       // TODO: Implement panic mode
+      console.log('http with no connection')
       try {
-        const call = JSON.stringify(`${type}**${url}**${params}**${withCredentials}$$$${new Date()}`);
+        const call = `${type}**${url}**${JSON.stringify(params)}**${withCredentials}$$$${new Date()}`;
         let callQueue = Storage.get(LS_KEY);
         if (!callQueue) {
           callQueue = [];
@@ -60,7 +61,6 @@ class Panic {
   post(url, params, withCredentials = true) {
     this.http('POST', url, params, withCredentials);
   }
-};
+}
 
-
-
+export default Panic;

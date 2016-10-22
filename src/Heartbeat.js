@@ -4,9 +4,7 @@
  * @author Anthony Altieri on 10/22/16.
  */
 
-import * as Ajax from 'Ajax';
-
-
+import * as Ajax from './Ajax';
 
 type HTTP_TYPE = 'POST' | 'GET';
 type options = {
@@ -30,7 +28,7 @@ class Heartbeat {
    *
    * options {Object} The options that are to be applied to the
    * heartbeat singleton. These include:
-   *   - httpType: HTTP_TYPE the type of
+   *   - type: HTTP_TYPE the type of
    *   - secondsPerBeat: number
    *   - withCredentials {boolean} if to put withCredentials on the Ajax
    * request
@@ -38,14 +36,19 @@ class Heartbeat {
   constructor(endpoint: string, options: options): void {
     const { type, secondsPerBeat, withCredentials } = options;
     const ONE_SECOND = 1;
+    const secondsToMilliseconds = (seconds) => {
+      const CONVERSION = 1000;
+      return seconds * CONVERSION;
+    };
     this.milisecondsPerBeat = secondsPerBeat
-      ? secondsToMiliseconds(secondsPerBeat)
-      : secondsToMiliseconds(ONE_SECOND);
+      ? secondsToMilliseconds(secondsPerBeat)
+      : secondsToMilliseconds(ONE_SECOND);
     this.type = type;
     this.endpoint = endpoint;
     this.withCredentials = withCredentials;
     // not in panic by default
     this.inPanic = false;
+    this.init();
   }
 
   /**
@@ -68,6 +71,7 @@ class Heartbeat {
       .then((result: AjaxResult) => {
         const { code, payload } = result;
         const isOnline = code => code !== 0;
+        console.log(`beat code: ${code}`);
         this.isAlive = isOnline(code);
       })
       .catch((fail: AjaxFail) => {
@@ -88,7 +92,5 @@ class Heartbeat {
   }
 }
 
-function secondsToMilliseconds(seconds) {
-  const CONVERSION = 1000;
-  return seconds * CONVERSION;
-}
+
+export default Heartbeat;

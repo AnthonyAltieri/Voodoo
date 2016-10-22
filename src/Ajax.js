@@ -13,7 +13,7 @@ export const send = (type, url, params = {}, withCredentials = false)  => {
     ajax.onreadystatechange = () => {
       if (ajax.readyState !== XMLHttpRequest.DONE) return;
       const isFivehundred = (code) => code >= 500 && code <= 599;
-      if (isFivehundred(code)) {
+      if (isFivehundred(ajax.status)) {
         reject({
           code: 500,
           error: {
@@ -22,10 +22,11 @@ export const send = (type, url, params = {}, withCredentials = false)  => {
           }
         });
       } else {
+        console.log('ajax', ajax);
         try {
           const payload = JSON.stringify(ajax.payload);
           resolve({
-            code: ajax.code,
+            code: ajax.status,
             payload,
           })
         } catch (error) {

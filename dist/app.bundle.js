@@ -57,12 +57,19 @@
 
 	var _Panic2 = _interopRequireDefault(_Panic);
 
+	var _Storage = __webpack_require__(4);
+
+	var Storage = _interopRequireWildcard(_Storage);
+
+	function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
+
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-	var SERVER_PREFIX = 'http://159.203.234.179'; /**
-	                                               * @author Anthony Altieri on 10/15/16.
-	                                               */
+	/**
+	 * @author Anthony Altieri on 10/15/16.
+	 */
 
+	var SERVER_PREFIX = 'http://159.203.234.179';
 	var HEARTBEAT_ENDPOINT = 'http://159.203.234.179/isAlive';
 	var FIVE_SECONDS = 5;
 	var ONE_SECOND = 1;
@@ -73,12 +80,36 @@
 	var panic = void 0;
 
 	function test() {
-	  panic = new _Panic2.default(HEARTBEAT_ENDPOINT, TYPE, FIVE_SECONDS, ONE_THIRD_SECOND);
+	  console.log('Beginning test()');
+	  panic = new _Panic2.default(HEARTBEAT_ENDPOINT, {
+	    type: TYPE,
+	    secondsPerBeat: FIVE_SECONDS
+	  });
+	}
+
+	function testPost() {
+	  panic.post(SERVER_PREFIX + '/test', { foo: 'bar' });
+	}
+
+	function testLocal() {
+	  Storage.set('key', 'foobar');
+	  console.log('retrieved: ' + Storage.get('key'));
 	}
 
 	var testButton = document.createElement('button');
 	testButton.onclick = test;
+	testButton.innerHTML = 'Start Test';
 	document.body.appendChild(testButton);
+
+	var postButton = document.createElement('button');
+	postButton.onclick = testPost;
+	postButton.innerHTML = 'Send Post';
+	document.body.appendChild(postButton);
+
+	var storageButton = document.createElement('button');
+	storageButton.onclick = testLocal;
+	storageButton.innerHTML = 'Storage test';
+	document.body.appendChild(storageButton);
 
 /***/ },
 /* 2 */
@@ -90,48 +121,74 @@
 	  value: true
 	});
 
-	var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
-
 	var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }(); /**
-	                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      * @author Anthony Altieri on 10/14/16.
-	                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      * @author Bharat Batra on 10/14/16.
+	                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      * @author Anthony Altieri on 10/22/16.
 	                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      */
 
-	var _Heartbeat = __webpack_require__(3);
-
-	var _Heartbeat2 = _interopRequireDefault(_Heartbeat);
-
-	var _Ajax = __webpack_require__(4);
-
-	var _Storage = __webpack_require__(5);
+	var _Storage = __webpack_require__(4);
 
 	var Storage = _interopRequireWildcard(_Storage);
 
-	function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
+	var _Ajax = __webpack_require__(3);
+
+	var Ajax = _interopRequireWildcard(_Ajax);
+
+	var _Heartbeat = __webpack_require__(5);
+
+	var _Heartbeat2 = _interopRequireDefault(_Heartbeat);
 
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+	function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
 
 	function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
 
 	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-	var FLATLINE = 'flatline';
+	var LS_KEY = 'PanicCallQueue';
 
 	var Panic = function () {
-	  function Panic(heartbeatEndpoint, type, secondsPerBeat) {
-	    var panicSecondsPerBeat = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : 10;
-
+	  function Panic(endpoint, options) {
 	    _classCallCheck(this, Panic);
 
-	    console.log('init()');
-	    if (typeof heartbeatEndpoint === 'undefined') {
-	      throw new Error('Must have a valid heartbeat endpoint');
-	    }
-	    this.panicMilisecondsPerBeat = panicSecondsPerBeat;
-	    this.heartbeat = new _Heartbeat2.default(heartbeatEndpoint, type, secondsPerBeat);
+	    this.heartbeat = new _Heartbeat2.default(endpoint, options);
 	  }
 
 	  _createClass(Panic, [{
+	    key: 'http',
+	    value: function http(type, url, params, withCredentials) {
+	      var _this = this;
+
+	      console.log('http: ' + type);
+	      console.log('heartbeat.isAlive: ' + this.heartbeat.isAlive);
+	      if (this.heartbeat.isAlive) {
+	        Ajax.send(type, url, params, withCredentials).then(function () {}).catch(function () {
+	          // NOTE: Might want to add some sort of functionality to
+	          // guarantee that the http call after forceDead() uses
+	          // offline functionality
+	          _this.heartbeat.forceDead();
+	          _this.http(type, url, params, withCredentials);
+	        });
+	      } else {
+	        // TODO: Implement panic mode
+	        console.log('http with no connection');
+	        try {
+	          var call = type + '**' + url + '**' + JSON.stringify(params) + '**' + withCredentials + '$$$' + new Date();
+	          var callQueue = Storage.get(LS_KEY);
+	          if (!callQueue) {
+	            callQueue = [];
+	          }
+	          // Add call to queue
+	          // TODO: Sort [...calQueue, call] by time
+	          callQueue = [].concat(_toConsumableArray(callQueue), [call]);
+	          // Save in local storage
+	          Storage.set(LS_KEY, callQueue);
+	        } catch (e) {
+	          // Silently fail
+	        }
+	      }
+	    }
+	  }, {
 	    key: 'get',
 	    value: function get(url, params) {
 	      var withCredentials = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : true;
@@ -145,71 +202,6 @@
 
 	      this.http('POST', url, params, withCredentials);
 	    }
-	  }, {
-	    key: 'http',
-	    value: function http(type, url, params, withCredentials) {
-	      var _this = this;
-
-	      if (this.heartbeat.isAlive) {
-	        // If the heartbeat is alive send the HTTP request
-	        (0, _Ajax.send)(type, url, params, withCredentials);
-	      } else {
-	        // If the heartbeat is dead, determine if panic mode as been enabled
-	        if (!this.isPanic) {
-	          (function () {
-	            _this.isPanic = true;
-	            _this.heartbeat.beginPanic();
-	            _this.crashcart = window.setInterval(function () {
-	              _this.heartbeat.beat();
-	            }, _this.panicMilisecondsPerBeat);
-	            var unsubscribe = _this.heartbeat.subscribe(function () {
-	              clearInterval(_this.crashcart);
-	              _this.isPanic = false;
-	              _this.heartbeat.endPanic();
-	              var flatlineActions = Storage.get(FLATLINE);
-	              if (typeof flatlineActions !== 'undefined') {
-	                flatlineActions.forEach(function (a) {
-	                  // TODO: Deal with dead data
-	                  var _a$split = a.split('&');
-
-	                  var _a$split2 = _slicedToArray(_a$split, 2);
-
-	                  var toCall = _a$split2[0];
-	                  var time = _a$split2[1];
-
-	                  var type = toCall.split(':')[0];
-
-	                  var _toCall$split = toCall.split(',');
-
-	                  var _toCall$split2 = _slicedToArray(_toCall$split, 3);
-
-	                  var url = _toCall$split2[0];
-	                  var params = _toCall$split2[1];
-	                  var withCredentials = _toCall$split2[2];
-
-	                  switch (type) {
-	                    case 'GET':
-	                      {
-	                        _this.get(url, params, withCredentials);
-	                        break;
-	                      }
-	                    case 'POST':
-	                      {
-	                        _this.post(url, params, withCredentials);
-	                        break;
-	                      }
-	                  }
-	                });
-	              }
-	              unsubscribe();
-	            });
-	            Storage.set(FLATLINE, '[]');
-	          })();
-	        }
-	        var flatline = Storage.get(FLATLINE);
-	        Storage.set([].concat(_toConsumableArray(flatline), [type + ':' + url + ',' + params + ',' + withCredentials + '&time:' + new Date().getTime()]));
-	      }
-	    }
 	  }]);
 
 	  return Panic;
@@ -219,111 +211,6 @@
 
 /***/ },
 /* 3 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict';
-
-	Object.defineProperty(exports, "__esModule", {
-	  value: true
-	});
-
-	var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }(); /**
-	                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      * @author Anthony Altieri on 10/14/16.
-	                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      * @author Bharat Batra on 10/14/16.
-	                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      */
-
-	var _Ajax = __webpack_require__(4);
-
-	function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
-
-	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-	var Heartbeat = function () {
-	  function Heartbeat(heartbeatEndpoint, type) {
-	    var secondsPerBeat = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 1;
-
-	    _classCallCheck(this, Heartbeat);
-
-	    this.source = heartbeatEndpoint;
-	    this.isAlive = false;
-	    this.listeners = [];
-	    this.milisecondsPerBeat = secondsPerBeat * 1000;
-	    this.beatType = type;
-	    this.keepAlive(type);
-	  }
-
-	  _createClass(Heartbeat, [{
-	    key: 'beginPanic',
-	    value: function beginPanic() {
-	      if (typeof this.pacemaker !== 'undefined') {
-	        clearInterval(this.pacemaker);
-	      }
-	    }
-	  }, {
-	    key: 'endPanic',
-	    value: function endPanic() {
-	      this.keepAlive(this.beatType);
-	    }
-	  }, {
-	    key: 'keepAlive',
-	    value: function keepAlive(type) {
-	      var _this = this;
-
-	      console.log('keep Alive');
-	      this.pacemaker = window.setInterval(function () {
-	        _this.beat(type);
-	      }, this.milisecondsPerBeat);
-	    }
-	  }, {
-	    key: 'beat',
-	    value: function beat() {
-	      var _this2 = this;
-
-	      var type = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 'GET';
-
-	      console.log('beat');
-	      var notFourHundred = function notFourHundred(n) {
-	        return n < 400 && n > 499;
-	      };
-	      (0, _Ajax.send)(type, this.source).then(function (response) {
-	        console.log('send.then()');
-	        var code = response.code;
-
-	        if (typeof code === 'undefined') {
-	          throw new Error('response code should not be undefined');
-	        }
-	        _this2.isAlive = notFourHundred(response.code);
-	        // If there are listeners waiting for the heartbeat to become
-	        // alive again then execute them
-	        if (_this2.isAlive && _this2.listeners.length > 0) {
-	          _this2.listeners.forEach(function (l) {
-	            l();
-	          });
-	        }
-	      }).catch(function (error) {
-	        console.log('send.catch()', error);
-	      });
-	    }
-	  }, {
-	    key: 'subscribe',
-	    value: function subscribe(listener, type) {
-	      var _this3 = this;
-
-	      var currentListeners = this.listeners;
-	      this.listeners = [].concat(_toConsumableArray(this.listeners), [listener]);
-	      return function () {
-	        _this3.listeners = currentListeners;
-	      };
-	    }
-	  }]);
-
-	  return Heartbeat;
-	}();
-
-	exports.default = Heartbeat;
-
-/***/ },
-/* 4 */
 /***/ function(module, exports) {
 
 	'use strict';
@@ -348,63 +235,30 @@
 	    ajax.withCredentials = withCredentials;
 	    ajax.onreadystatechange = function () {
 	      if (ajax.readyState !== XMLHttpRequest.DONE) return;
-	      console.log('ajax done');
-	      if (ajax.status === 200) {
-	        var response = null;
-	        try {
-	          if (!!ajax.payload) {
-	            response = JSON.parse(ajax.payload);
+	      var isFivehundred = function isFivehundred(code) {
+	        return code >= 500 && code <= 599;
+	      };
+	      if (isFivehundred(ajax.status)) {
+	        reject({
+	          code: 500,
+	          error: {
+	            code: 500,
+	            info: 'Server Error'
 	          }
-	        } catch (e) {
-	          reject({
-	            code: 200,
-	            error: {
-	              info: 'JSON parse failed'
-	            }
-	          });
-	        }
-	        resolve({
-	          code: 200,
-	          payload: response
 	        });
 	      } else {
-	        console.log('ajax status ' + ajax.status);
-	        switch (ajax.status) {
-	          // Redirection
-	          case 300:
-	            {
-	              // Do nothing
-	              reject({
-	                code: 300
-	              });
-	              return;
-	            }
-
-	          // Client Error
-	          case 400:
-	            {
-	              reject({
-	                code: 400,
-	                error: {
-	                  code: 400,
-	                  info: 'Client Error'
-	                }
-	              });
-	              return;
-	            }
-
-	          // Server Error
-	          case 500:
-	            {
-	              reject({
-	                code: 500,
-	                error: {
-	                  code: 500,
-	                  info: 'Server Error'
-	                }
-	              });
-	              return;
-	            }
+	        console.log('ajax', ajax);
+	        try {
+	          var payload = JSON.stringify(ajax.payload);
+	          resolve({
+	            code: ajax.status,
+	            payload: payload
+	          });
+	        } catch (error) {
+	          reject({
+	            code: undefined,
+	            error: error
+	          });
 	        }
 	      }
 	    };
@@ -427,7 +281,7 @@
 	};
 
 /***/ },
-/* 5 */
+/* 4 */
 /***/ function(module, exports) {
 
 	'use strict';
@@ -445,7 +299,7 @@
 
 	var set = exports.set = function set(key, value) {
 	  try {
-	    var serializedValue = JSON.serialize(value);
+	    var serializedValue = JSON.stringify(value);
 	    if (typeof window.localStorage === 'undefined') {
 	      document.cookie = key + '=' + serializedValue;
 	    } else {
@@ -469,7 +323,7 @@
 
 	      if (key === cookieKey) {
 	        try {
-	          return JSON.serialize(cookieValue);
+	          return JSON.stringify(cookieValue);
 	        } catch (e) {
 	          return false;
 	        }
@@ -485,6 +339,124 @@
 	    }
 	  }
 	};
+
+/***/ },
+/* 5 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+
+	Object.defineProperty(exports, "__esModule", {
+	  value: true
+	});
+
+	var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+	/**
+	 * @author Anthony Altieri on 10/22/16.
+	 */
+
+	var _Ajax = __webpack_require__(3);
+
+	var Ajax = _interopRequireWildcard(_Ajax);
+
+	function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
+
+	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+	var Heartbeat = function () {
+	  /**
+	   * endpoint {String} The URI of the endpoint on the server that
+	   * will be used to determine connection status
+	   *
+	   * options {Object} The options that are to be applied to the
+	   * heartbeat singleton. These include:
+	   *   - type: HTTP_TYPE the type of
+	   *   - secondsPerBeat: number
+	   *   - withCredentials {boolean} if to put withCredentials on the Ajax
+	   * request
+	   */
+	  function Heartbeat(endpoint, options) {
+	    _classCallCheck(this, Heartbeat);
+
+	    var type = options.type;
+	    var secondsPerBeat = options.secondsPerBeat;
+	    var withCredentials = options.withCredentials;
+
+	    var ONE_SECOND = 1;
+	    var secondsToMilliseconds = function secondsToMilliseconds(seconds) {
+	      var CONVERSION = 1000;
+	      return seconds * CONVERSION;
+	    };
+	    this.milisecondsPerBeat = secondsPerBeat ? secondsToMilliseconds(secondsPerBeat) : secondsToMilliseconds(ONE_SECOND);
+	    this.type = type;
+	    this.endpoint = endpoint;
+	    this.withCredentials = withCredentials;
+	    // not in panic by default
+	    this.inPanic = false;
+	    this.init();
+	  }
+
+	  /**
+	   * Initializes the beat interval
+	   */
+
+
+	  _createClass(Heartbeat, [{
+	    key: 'init',
+	    value: function init() {
+	      var _this = this;
+
+	      this.pacemaker = window.setInterval(function () {
+	        _this.beat();
+	      }, this.milisecondsPerBeat);
+	    }
+
+	    /**
+	     * Ping the server to determine if the server is working/client is
+	     * online
+	     */
+
+	  }, {
+	    key: 'beat',
+	    value: function beat() {
+	      var _this2 = this;
+
+	      Ajax.send(this.type, this.endpoint, {}, this.withCredentials).then(function (result) {
+	        var code = result.code;
+	        var payload = result.payload;
+
+	        var isOnline = function isOnline(code) {
+	          return code !== 0;
+	        };
+	        console.log('beat code: ' + code);
+	        _this2.isAlive = isOnline(code);
+	      }).catch(function (fail) {
+	        // Is not alive on server error or offline
+	        _this2.isAlive = false;
+	      });
+	    }
+
+	    /**
+	     * Stops the interval (pacemaker) that pings the server periodically (beat)
+	     */
+
+	  }, {
+	    key: 'stop',
+	    value: function stop() {
+	      if (!!this.pacemaker) clearInterval(this.pacemaker);
+	    }
+	  }, {
+	    key: 'forceDead',
+	    value: function forceDead() {
+	      this.isAlive = false;
+	    }
+	  }]);
+
+	  return Heartbeat;
+	}();
+
+	exports.default = Heartbeat;
 
 /***/ }
 /******/ ]);
