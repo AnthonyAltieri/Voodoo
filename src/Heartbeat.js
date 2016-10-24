@@ -30,7 +30,9 @@ class Heartbeat {
    * heartbeat singleton. These include:
    *   - type: HTTP_TYPE the type of
    *   - secondsPerBeat: {number} how many seconds to wait in between each beat
+   *                      Default value set to 3
    *   - secondsPerPanicBeat: {number} when in panic mode how many seconds to wait
+   *                           Default value set to 1
    *   between each beat
    *   - withCredentials {boolean} if to put withCredentials on the Ajax
    * request
@@ -51,7 +53,7 @@ class Heartbeat {
       : secondsToMilliseconds(ONE_SECOND);
     this.type = type;
     this.endpoint = endpoint;
-    this.withCredentials = withCredentials;
+    this.withCredentials = withCredentials ? withCredentials : true;
     this.aliveListeners = [];
     this.deadListeners = [];
     this.isPanic = false;
@@ -81,8 +83,10 @@ class Heartbeat {
         console.log(`beat code: ${code}`);
         this.isAlive = isOnline(code);
         if (this.isAlive) {
+          console.log("Beat is alive");
           this.aliveListeners.forEach(l => { l() });
         } else {
+          console.log("Beat is dead");
           this.deadListeners.forEach(l => { l() });
         }
       })

@@ -58,28 +58,36 @@ class Panic {
 }
 
 function onAlive() {
+  console.log('alive');
   if (this.heartbeat.isPanic) {
+    console.log("In Panic mode, but gonna stop panic cuz alive");
     this.heartbeat.stopPanic();
   }
   if (this.priorAliveStatus === false) {
-    this.priorAliveStatus = true;
     // Going from dead to alive
-    CQ
-      .get()
-      .forEach((c) => {
-        this.http(c.type, c.url, c.params, c.withCredentials)
-          .then((payload) => {
-            const response = this.hub[c.responseTag];
-            if (typeof response === 'function') {
-              response(payload);
-            }
-          })
-      })
+    this.priorAliveStatus = true;
+    console.log("Prior Alive set to true");
+    console.log(JSON.stringify(CQ.get(), null, 2));
+    //If calls exist on CQ, we will now attempt to make them
+    if(!!CQ.get()){
+      CQ
+        .get()
+        .forEach((c) => {
+          this.http(c.type, c.url, c.params, c.withCredentials)
+            .then((payload) => {
+              const response = this.hub[c.responseTag];
+              if (typeof response === 'function') {
+                response(payload);
+              }
+            })
+        })
+    }
   }
-  console.log('alive')
+
 }
 
 function onDead() {
+  console.log('dead');
   if (!this.heartbeat.isPanic) {
     this.heartbeat.startPanic();
   }
@@ -87,7 +95,7 @@ function onDead() {
     this.priorAliveStatus = false;
     // Going from alive to dead
   }
-  console.log('dead');
+
 }
 
 

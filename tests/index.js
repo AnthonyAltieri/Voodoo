@@ -15,7 +15,6 @@ const TWO_SECONDS = 2;
 const ONE_THIRD_SECOND = 0.33;
 const TYPE = 'POST';
 
-
 let panic;
 let i=1;
 
