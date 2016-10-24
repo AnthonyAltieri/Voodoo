@@ -2,8 +2,9 @@
  * @author Anthony Altieri on 10/22/16.
  */
 
-import * as Storage from './Storage';
+import * as CQ from './CallQueue';
 import * as Ajax from './Ajax';
+import Hub from './Hub';
 import Heartbeat from './Heartbeat';
 
 type HTTP_TYPE = 'POST' | 'GET';
@@ -13,58 +14,47 @@ type options = {
   withCredentials: boolean,
 };
 
-const LS_KEY = 'PanicCallQueue';
 
 class Panic {
-  constructor(endpoint: string, options: options) {
+  constructor(hub, endpoint: string, options: options) {
+    CQ.init();
     this.heartbeat = new Heartbeat(endpoint, options);
-    // Flag if the call Queue is being dealt with
-    this.isHandlingCallQueue = false;
     this.unsubscribeOnAlive = this.heartbeat.subscribe('ALIVE', onAlive.bind(this));
     this.unsubscribeOnDead = this.heartbeat.subscribe('DEAD', onDead.bind(this));
+    this.priorAliveStatus = false;
   }
 
 
-  http(type: HTTP_TYPE, url, params, withCredentials) {
-    console.log(`http: ${type}`);
-    console.log(`heartbeat.isAlive: ${this.heartbeat.isAlive}`)
-    if (this.heartbeat.isAlive) {
-      Ajax
-        .send(type, url, params, withCredentials)
-        .then(() => {})
-        .catch(() => {
-          // NOTE: Might want to add some sort of functionality to
-          // guarantee that the http call after forceDead() uses
-          // offline functionality
-          this.heartbeat.forceDead();
-          this.http(type, url, params, withCredentials);
-        })
-    } else {
-      // TODO: Implement panic mode
-      console.log('http with no connection')
-      try {
-        const call = `${type}**${url}**${JSON.stringify(params)}**${withCredentials}$$$${new Date()}`;
-        let callQueue = Storage.get(LS_KEY);
-        if (!callQueue) {
-          callQueue = [];
-        }
-        // Add call to queue
-        // TODO: Sort [...calQueue, call] by time
-        callQueue = [...callQueue, call];
-        // Save in local storage
-        Storage.set(LS_KEY, callQueue);
-      } catch (e) {
-        // Silently fail
+  http(type: HTTP_TYPE, url, params, responseTag, withCredentials) {
+    return new Promise((resolve, reject) => {
+      if (this.heartbeat.isAlive) {
+        Ajax
+          .send(type, url, params, withCredentials)
+          .then((payload) => { resolve(payload) })
+          .catch(() => {
+            this.heartbeat.forceDead();
+            this.http(type, url, params, withCredentials);
+          })
+      } else {
+        CQ.add(CQ.get(), {
+          time: new Date().getTime(),
+          type,
+          url,
+          params,
+          withCredentials,
+          responseTag,
+        });
       }
-    }
+
+    })
   }
 
-  get(url, params, withCredentials = true) {
-    this.http('GET', url, params, withCredentials);
+  get(url, params, responseTag, withCredentials = true) {
+    this.http('GET', url, params, responseTag, withCredentials);
   }
 
-  post(url, params, withCredentials = true) {
-    this.http('POST', url, params, withCredentials);
+  post(url, params, responseTag, withCredentials = true) {
+    this.http('POST', url, params, responseTag, withCredentials);
   }
 }
 
@@ -72,18 +62,34 @@ function onAlive() {
   if (this.heartbeat.isPanic) {
     this.heartbeat.stopPanic();
   }
+  if (this.priorAliveStatus === false) {
+    this.priorAliveStatus = true;
+    // Going from dead to alive
+    CQ
+      .get()
+      .forEach((c) => {
+        this.http(c.type, c.url, c.params, c.withCredentials)
+          .then((payload) => {
+            const response = this.hub[c.responseTag];
+            if (typeof response === 'function') {
+              response(payload);
+            }
+          })
+      })
+  }
   console.log('alive')
 }
 
 function onDead() {
-  if (!this.heartbeat) return;
-  console.log('dead');
   if (!this.heartbeat.isPanic) {
     this.heartbeat.startPanic();
   }
-  if (!this.isHandlingCallQueue) {
-    // TODO: Start handling call queue
+  if (this.priorAliveStatus === true) {
+    this.priorAliveStatus = false;
+    // Going from alive to dead
   }
+  console.log('dead');
 }
+
 
 export default Panic;

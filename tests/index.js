@@ -4,6 +4,7 @@
 
 import Panic from '../src/Panic';
 import * as Storage from '../src/Storage';
+import Hub from '../src/Hub';
 
 
 const SERVER_PREFIX = 'http://159.203.234.179';
@@ -19,7 +20,7 @@ let panic;
 
 function test() {
   console.log('Beginning test()');
-  panic = new Panic(HEARTBEAT_ENDPOINT, {
+  panic = new Panic(hub, HEARTBEAT_ENDPOINT, {
     type: TYPE,
     secondsPerBeat: FIVE_SECONDS,
   });
