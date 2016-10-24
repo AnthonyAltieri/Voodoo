@@ -45,7 +45,6 @@ class Panic {
           responseTag,
         });
       }
-
     })
   }
 
