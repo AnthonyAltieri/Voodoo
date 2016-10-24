@@ -27,8 +27,12 @@ class Panic {
 
   http(type: HTTP_TYPE, url, params, withCredentials) {
     console.log(`http: ${type}`);
-    console.log(`heartbeat.isAlive: ${this.heartbeat.isAlive}`)
-    if (this.heartbeat.isAlive) {
+    console.log(`heartbeat.isAlive: ${this.heartbeat.isAlive}`);
+    /*
+    Either heartbeat has been confirmed to be alive, or this call was made before the first heartbeat
+    In either case, we know that heartbeat is not dead so we can attempt this call
+     */
+    if (this.heartbeat.isAlive || typeof this.heartbeat.isAlive === 'undefined') {
       Ajax
         .send(type, url, params, withCredentials)
         .then(() => {})
@@ -41,7 +45,7 @@ class Panic {
         })
     } else {
       // TODO: Implement panic mode
-      console.log('http with no connection')
+      console.log('http with no connection');
       try {
         const call = `${type}**${url}**${JSON.stringify(params)}**${withCredentials}$$$${new Date()}`;
         let callQueue = Storage.get(LS_KEY);

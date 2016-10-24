@@ -78,6 +78,7 @@
 	var TYPE = 'POST';
 
 	var panic = void 0;
+	var i = 1;
 
 	function test() {
 	  console.log('Beginning test()');
@@ -88,7 +89,7 @@
 	}
 
 	function testPost() {
-	  panic.post(SERVER_PREFIX + '/test', { foo: 'bar' });
+	  panic.post(SERVER_PREFIX + '/test', { foo: i++ });
 	}
 
 	function testLocal() {
@@ -166,7 +167,11 @@
 
 	      console.log('http: ' + type);
 	      console.log('heartbeat.isAlive: ' + this.heartbeat.isAlive);
-	      if (this.heartbeat.isAlive) {
+	      /*
+	      Either heartbeat has been confirmed to be alive, or this call was made before the first heartbeat
+	      In either case, we know that heartbeat is not dead so we can attempt this call
+	       */
+	      if (this.heartbeat.isAlive || typeof this.heartbeat.isAlive === 'undefined') {
 	        Ajax.send(type, url, params, withCredentials).then(function () {}).catch(function () {
 	          // NOTE: Might want to add some sort of functionality to
 	          // guarantee that the http call after forceDead() uses

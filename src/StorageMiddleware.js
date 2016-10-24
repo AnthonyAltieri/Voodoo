@@ -12,7 +12,7 @@ export const addStorage = (call) => ({
     try {
       Storage.set(
         'CallQueue',
-        !sotredCQ
+        !storedCQ
           ? {time, cq: [call]}
           : {time, cq: [...storedCQ, call]}
       );

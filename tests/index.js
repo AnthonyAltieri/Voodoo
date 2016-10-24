@@ -16,6 +16,7 @@ const TYPE = 'POST';
 
 
 let panic;
+let i=1;
 
 function test() {
   console.log('Beginning test()');
@@ -26,7 +27,7 @@ function test() {
 }
 
 function testPost() {
-  panic.post(`${SERVER_PREFIX}/test`, { foo: 'bar' });
+  panic.post(`${SERVER_PREFIX}/test`, { foo: i++ });
 }
 
 function testLocal() {
