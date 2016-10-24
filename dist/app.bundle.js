@@ -61,15 +61,18 @@
 
 	var Storage = _interopRequireWildcard(_Storage);
 
+	var _Hub = __webpack_require__(8);
+
+	var _Hub2 = _interopRequireDefault(_Hub);
+
 	function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
 
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-	/**
-	 * @author Anthony Altieri on 10/15/16.
-	 */
+	var SERVER_PREFIX = 'http://159.203.234.179'; /**
+	                                               * @author Anthony Altieri on 10/15/16.
+	                                               */
 
-	var SERVER_PREFIX = 'http://159.203.234.179';
 	var HEARTBEAT_ENDPOINT = 'http://159.203.234.179/isAlive';
 	var FIVE_SECONDS = 5;
 	var ONE_SECOND = 1;
@@ -82,7 +85,7 @@
 
 	function test() {
 	  console.log('Beginning test()');
-	  panic = new _Panic2.default(HEARTBEAT_ENDPOINT, {
+	  panic = new _Panic2.default(_Hub2.default, HEARTBEAT_ENDPOINT, {
 	    type: TYPE,
 	    secondsPerBeat: FIVE_SECONDS
 	  });
@@ -127,13 +130,17 @@
 	                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      * @author Anthony Altieri on 10/22/16.
 	                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      */
 
-	var _Storage = __webpack_require__(3);
+	var _CallQueue = __webpack_require__(6);
 
-	var Storage = _interopRequireWildcard(_Storage);
+	var CQ = _interopRequireWildcard(_CallQueue);
 
 	var _Ajax = __webpack_require__(4);
 
 	var Ajax = _interopRequireWildcard(_Ajax);
+
+	var _Hub = __webpack_require__(8);
+
+	var _Hub2 = _interopRequireDefault(_Hub);
 
 	var _Heartbeat = __webpack_require__(5);
 
@@ -143,74 +150,57 @@
 
 	function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
 
-	function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
-
 	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-	var LS_KEY = 'PanicCallQueue';
-
 	var Panic = function () {
-	  function Panic(endpoint, options) {
+	  function Panic(hub, endpoint, options) {
 	    _classCallCheck(this, Panic);
 
+	    CQ.init();
 	    this.heartbeat = new _Heartbeat2.default(endpoint, options);
-	    // Flag if the call Queue is being dealt with
-	    this.isHandlingCallQueue = false;
 	    this.unsubscribeOnAlive = this.heartbeat.subscribe('ALIVE', onAlive.bind(this));
 	    this.unsubscribeOnDead = this.heartbeat.subscribe('DEAD', onDead.bind(this));
+	    this.priorAliveStatus = false;
 	  }
 
 	  _createClass(Panic, [{
 	    key: 'http',
-	    value: function http(type, url, params, withCredentials) {
+	    value: function http(type, url, params, responseTag, withCredentials) {
 	      var _this = this;
 
-	      console.log('http: ' + type);
-	      console.log('heartbeat.isAlive: ' + this.heartbeat.isAlive);
-	      /*
-	      Either heartbeat has been confirmed to be alive, or this call was made before the first heartbeat
-	      In either case, we know that heartbeat is not dead so we can attempt this call
-	       */
-	      if (this.heartbeat.isAlive || typeof this.heartbeat.isAlive === 'undefined') {
-	        Ajax.send(type, url, params, withCredentials).then(function () {}).catch(function () {
-	          // NOTE: Might want to add some sort of functionality to
-	          // guarantee that the http call after forceDead() uses
-	          // offline functionality
-	          _this.heartbeat.forceDead();
-	          _this.http(type, url, params, withCredentials);
-	        });
-	      } else {
-	        // TODO: Implement panic mode
-	        console.log('http with no connection');
-	        try {
-	          var call = type + '**' + url + '**' + JSON.stringify(params) + '**' + withCredentials + '$$$' + new Date();
-	          var callQueue = Storage.get(LS_KEY);
-	          if (!callQueue) {
-	            callQueue = [];
-	          }
-	          // Add call to queue
-	          // TODO: Sort [...calQueue, call] by time
-	          callQueue = [].concat(_toConsumableArray(callQueue), [call]);
-	          // Save in local storage
-	          Storage.set(LS_KEY, callQueue);
-	        } catch (e) {
-	          // Silently fail
+	      return new Promise(function (resolve, reject) {
+	        if (_this.heartbeat.isAlive) {
+	          Ajax.send(type, url, params, withCredentials).then(function (payload) {
+	            resolve(payload);
+	          }).catch(function () {
+	            _this.heartbeat.forceDead();
+	            _this.http(type, url, params, withCredentials);
+	          });
+	        } else {
+	          CQ.add(CQ.get(), {
+	            time: new Date().getTime(),
+	            type: type,
+	            url: url,
+	            params: params,
+	            withCredentials: withCredentials,
+	            responseTag: responseTag
+	          });
 	        }
-	      }
+	      });
 	    }
 	  }, {
 	    key: 'get',
-	    value: function get(url, params) {
-	      var withCredentials = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : true;
+	    value: function get(url, params, responseTag) {
+	      var withCredentials = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : true;
 
-	      this.http('GET', url, params, withCredentials);
+	      this.http('GET', url, params, responseTag, withCredentials);
 	    }
 	  }, {
 	    key: 'post',
-	    value: function post(url, params) {
-	      var withCredentials = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : true;
+	    value: function post(url, params, responseTag) {
+	      var withCredentials = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : true;
 
-	      this.http('POST', url, params, withCredentials);
+	      this.http('POST', url, params, responseTag, withCredentials);
 	    }
 	  }]);
 
@@ -218,21 +208,35 @@
 	}();
 
 	function onAlive() {
+	  var _this2 = this;
+
 	  if (this.heartbeat.isPanic) {
 	    this.heartbeat.stopPanic();
+	  }
+	  if (this.priorAliveStatus === false) {
+	    this.priorAliveStatus = true;
+	    // Going from dead to alive
+	    CQ.get().forEach(function (c) {
+	      _this2.http(c.type, c.url, c.params, c.withCredentials).then(function (payload) {
+	        var response = _this2.hub[c.responseTag];
+	        if (typeof response === 'function') {
+	          response(payload);
+	        }
+	      });
+	    });
 	  }
 	  console.log('alive');
 	}
 
 	function onDead() {
-	  if (!this.heartbeat) return;
-	  console.log('dead');
 	  if (!this.heartbeat.isPanic) {
 	    this.heartbeat.startPanic();
 	  }
-	  if (!this.isHandlingCallQueue) {
-	    // TODO: Start handling call queue
+	  if (this.priorAliveStatus === true) {
+	    this.priorAliveStatus = false;
+	    // Going from alive to dead
 	  }
+	  console.log('dead');
 	}
 
 	exports.default = Panic;
@@ -572,6 +576,193 @@
 	}();
 
 	exports.default = Heartbeat;
+
+/***/ },
+/* 6 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+
+	Object.defineProperty(exports, "__esModule", {
+	  value: true
+	});
+	exports.hasCalls = exports.removeAllMiddleware = exports.addMiddleware = exports.pop = exports.add = exports.init = exports.get = undefined;
+
+	var _StorageMiddleware = __webpack_require__(7);
+
+	var StorageMiddleware = _interopRequireWildcard(_StorageMiddleware);
+
+	var _Storage = __webpack_require__(3);
+
+	var Storage = _interopRequireWildcard(_Storage);
+
+	function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
+
+	function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } } /**
+	                                                                                                                                                                                                     * @author Anthony Altieri on 10/22/16.
+	                                                                                                                                                                                                     */
+
+	var CallQueue = null;
+	var middleware = null;
+	var defaultMiddleware = [StorageMiddleware.addStorage, StorageMiddleware.popStorage];
+	var CQ_KEY = 'CallQueue';
+	var TWO_HOURS_MILLISECONDS = 2.7e6;
+
+	var get = exports.get = function get() {
+	  return CallQueue;
+	};
+
+	// TODO: make valid time easier to set, not have to do milliseconds
+	var init = exports.init = function init() {
+	  var validTimeDif = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : TWO_HOURS_MILLISECONDS;
+
+	  try {
+	    var priorState = Storage.get(CQ_KEY);
+	    var timeDiff = function timeDiff(time) {
+	      return new Date().getTime() - time;
+	    };
+	    var isValidPriorState = timeDiff(priorState.time) < validTimeDif;
+	    CallQueue = !!priorState && isValidPriorState ? priorState.cq : [];
+	    middleware = [].concat(defaultMiddleware);
+	  } catch (e) {
+	    // Silently fail
+	  }
+	};
+
+	var add = exports.add = function add(cq, call) {
+	  if (!cq) return;
+	  var applicableMiddleware = middleware.filter(function (m) {
+	    return m.type === 'ADD';
+	  });
+	  applicableMiddleware.forEach(function (m) {
+	    m.exec(call).bind(cq);
+	  });
+	  cq = [].concat(_toConsumableArray(cq), [call]).sort(function (l, r) {
+	    return l.time - r.time;
+	  });
+	  return call;
+	};
+
+	var pop = exports.pop = function pop(cq) {
+	  if (!cq || cq.length === 0) return null;
+	  var first = cq[0];
+	  var applicableMiddleware = middleware.filter(function (m) {
+	    return m.type === 'POP';
+	  });
+	  applicableMiddleware.forEach(function (m) {
+	    m.exec(first).bind(cq);
+	  });
+	  cq = cq.slice(1, CallQueue.length);
+	  return first;
+	};
+
+	var addMiddleware = exports.addMiddleware = function addMiddleware(middlewares, mw) {
+	  var currentMiddleware = middlewares.slice(0, middlewares.length);
+	  middlewares = [].concat(_toConsumableArray(middlewares), [mw]);
+	  return function () {
+	    middlewares = currentMiddleware;
+	  };
+	};
+
+	var removeAllMiddleware = exports.removeAllMiddleware = function removeAllMiddleware(middlewares, defaultMiddleware) {
+	  var keepStorage = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : false;
+
+	  if (keepStorage) {
+	    middlewares = [].concat(_toConsumableArray(defaultMiddleware));
+	    return;
+	  }
+	  middleware = [];
+	};
+
+	var hasCalls = exports.hasCalls = function hasCalls() {
+	  return CallQueue.length > 0;
+	};
+
+	exports.default = {
+	  init: init,
+	  add: add,
+	  pop: pop,
+	  addMiddleware: addMiddleware,
+	  removeAllMiddleware: removeAllMiddleware,
+	  get: get
+	};
+
+/***/ },
+/* 7 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+
+	Object.defineProperty(exports, "__esModule", {
+	  value: true
+	});
+	exports.popStorage = exports.addStorage = undefined;
+
+	var _Storage = __webpack_require__(3);
+
+	var Storage = _interopRequireWildcard(_Storage);
+
+	function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
+
+	function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } } /**
+	                                                                                                                                                                                                     * @author Anthony Altieri on 10/22/16.
+	                                                                                                                                                                                                     */
+
+	var CQ_KEY = 'CallQueue';
+
+	var addStorage = exports.addStorage = function addStorage(call) {
+	  return {
+	    type: 'ADD',
+	    exec: function exec() {
+	      var storedCQ = Storage.get(CQ_KEY);
+	      var time = new Date().getTime();
+	      try {
+	        Storage.set(CQ_KEY, storedCQ ? { time: time, cq: [].concat(_toConsumableArray(storedCQ), [call]).sort(function (l, r) {
+	            return l.time - r.time;
+	          }) } : { time: time, cq: [call] });
+	      } catch (e) {
+	        // Silently Fail
+	      }
+	    }
+	  };
+	};
+
+	var popStorage = exports.popStorage = function popStorage() {
+	  return {
+	    type: 'POP',
+	    exec: function exec() {
+	      var storedCQ = Storage.get(CQ_KEY);
+	      if (!storedCQ) return;
+	      var time = new Date().getTime();
+	      try {
+	        Storage.set(CQ_KEY, { time: time, cq: storedCQ.slice(1, storedCQ.length) });
+	      } catch (e) {
+	        // Silently Fail
+	      }
+	    }
+	  };
+	};
+
+/***/ },
+/* 8 */
+/***/ function(module, exports) {
+
+	"use strict";
+
+	Object.defineProperty(exports, "__esModule", {
+	  value: true
+	});
+	/**
+	 * @author Anthony Altieri on 10/22/16.
+	 */
+
+	var Hub = {
+	  test: function test(payload) {
+	    console.log(payload);
+	  }
+	};
+
+	exports.default = Hub;
 
 /***/ }
 /******/ ]);

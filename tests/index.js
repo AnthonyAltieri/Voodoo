@@ -21,7 +21,7 @@ let i=1;
 
 function test() {
   console.log('Beginning test()');
-  panic = new Panic(hub, HEARTBEAT_ENDPOINT, {
+  panic = new Panic(Hub, HEARTBEAT_ENDPOINT, {
     type: TYPE,
     secondsPerBeat: FIVE_SECONDS,
   });
