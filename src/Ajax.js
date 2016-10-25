@@ -29,6 +29,7 @@ export const send = (type, url, params = {}, withCredentials = false)  => {
             payload,
           })
         } catch (error) {
+
           reject({
             code: undefined,
             error,

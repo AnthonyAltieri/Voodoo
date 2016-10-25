@@ -169,15 +169,25 @@
 	      var _this = this;
 
 	      return new Promise(function (resolve, reject) {
-	        if (_this.heartbeat.isAlive) {
+	        if (_this.heartbeat.isAlive || typeof _this.heartbeat.isAlive === 'undefined') {
 	          Ajax.send(type, url, params, withCredentials).then(function (payload) {
-	            resolve(payload);
+	            console.log(".then now gonna resolve payload");
+	            if (payload.code !== 0) {
+	              console.log(payload);
+	              resolve(payload);
+	            } else {
+	              console.log("Payload couldn't be resolved code was found to be 0");
+	              _this.heartbeat.forceDead();
+	              _this.http(type, url, params, withCredentials);
+	            }
 	          }).catch(function () {
+	            console.log("Send caught an error");
 	            _this.heartbeat.forceDead();
 	            _this.http(type, url, params, withCredentials);
 	          });
 	        } else {
-	          CQ.add(CQ.get(), {
+	          console.log("Gonna Add to CQ");
+	          CQ.add({
 	            time: new Date().getTime(),
 	            type: type,
 	            url: url,
@@ -224,10 +234,14 @@
 	    if (!!CQ.get()) {
 	      CQ.get().forEach(function (c) {
 	        _this2.http(c.type, c.url, c.params, c.withCredentials).then(function (payload) {
-	          var response = _this2.hub[c.responseTag];
-	          if (typeof response === 'function') {
-	            response(payload);
-	          }
+	          // const response = this.hub[c.responseTag];
+	          // if (typeof response === 'function') {
+	          //   response(payload);
+	          // }
+	          console.log("Call Made: ");
+	          console.log(JSON.stringify(c, null, 2));
+	          console.log("Response: ");
+	          console.log(JSON.stringify(payload, null, 2));
 	        });
 	      });
 	    }
@@ -299,30 +313,30 @@
 	  }
 	};
 
-	var add = exports.add = function add(cq, call) {
-	  if (!cq) return;
-	  var applicableMiddleware = middleware.filter(function (m) {
-	    return m.type === 'ADD';
-	  });
-	  applicableMiddleware.forEach(function (m) {
-	    m.exec(call).bind(cq);
-	  });
-	  cq = [].concat(_toConsumableArray(cq), [call]).sort(function (l, r) {
-	    return l.time - r.time;
-	  });
+	var add = exports.add = function add(call) {
+	  //TODO: Uncomment and Enable these once add has been tested
+	  // const applicableMiddleware = middleware.filter(m => m.type === 'ADD');
+	  // applicableMiddleware.forEach((m) => { m.exec(call).bind(cq) });
+	  if (!!CallQueue) {
+	    CallQueue = [].concat(_toConsumableArray(CallQueue), [call]).sort(function (l, r) {
+	      return l.time - r.time;
+	    });
+	  } else {
+	    CallQueue = [call];
+	  }
+
+	  console.log("IN ADD");
+	  console.log(JSON.stringify(CallQueue, null, 2));
 	  return call;
 	};
 
-	var pop = exports.pop = function pop(cq) {
-	  if (!cq || cq.length === 0) return null;
-	  var first = cq[0];
-	  var applicableMiddleware = middleware.filter(function (m) {
-	    return m.type === 'POP';
-	  });
-	  applicableMiddleware.forEach(function (m) {
-	    m.exec(first).bind(cq);
-	  });
-	  cq = cq.slice(1, CallQueue.length);
+	var pop = exports.pop = function pop() {
+	  if (!CallQueue || CallQueue.length === 0) return null;
+	  var first = CallQueue[0];
+	  //TODO: Uncomment and Enable these once pop has been tested
+	  // const applicableMiddleware = middleware.filter(m => m.type === 'POP');
+	  // applicableMiddleware.forEach((m) => { m.exec(first).bind(cq) });
+	  CallQueue = CallQueue.slice(1, CallQueue.length);
 	  return first;
 	};
 
@@ -523,6 +537,7 @@
 	            payload: payload
 	          });
 	        } catch (error) {
+
 	          reject({
 	            code: undefined,
 	            error: error
@@ -685,10 +700,7 @@
 	        }
 	      }).catch(function (fail) {
 	        // Is not alive on server error or offline
-	        _this2.isAlive = false;
-	        _this2.deadListeners.forEach(function (l) {
-	          l();
-	        });
+	        _this2.handleDead();
 	      });
 	    }
 	  }, {
@@ -763,9 +775,18 @@
 	      }
 	    }
 	  }, {
+	    key: 'handleDead',
+	    value: function handleDead() {
+	      this.isAlive = false;
+	      this.deadListeners.forEach(function (l) {
+	        l();
+	      });
+	    }
+	  }, {
 	    key: 'forceDead',
 	    value: function forceDead() {
-	      this.isAlive = false;
+	      console.log("Forced Dead");
+	      this.handleDead();
 	    }
 	  }]);
 

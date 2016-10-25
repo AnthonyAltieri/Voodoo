@@ -92,8 +92,7 @@ class Heartbeat {
       })
       .catch((fail: AjaxFail) => {
         // Is not alive on server error or offline
-        this.isAlive = false;
-        this.deadListeners.forEach(l => { l() });
+        this.handleDead()
       })
   }
 
@@ -137,8 +136,14 @@ class Heartbeat {
 
   }
 
-  forceDead(): void {
+  handleDead():void{
     this.isAlive = false;
+    this.deadListeners.forEach(l => { l() });
+  }
+
+  forceDead(): void {
+    console.log("Forced Dead");
+    this.handleDead();
   }
 }
 

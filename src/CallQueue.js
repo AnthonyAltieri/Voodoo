@@ -38,20 +38,29 @@ export const init = (validTimeDif = TWO_HOURS_MILLISECONDS) => {
   }
 };
 
-export const add = (cq, call) : httpCall => {
-  if (!cq) return;
-  const applicableMiddleware = middleware.filter(m => m.type === 'ADD');
-  applicableMiddleware.forEach((m) => { m.exec(call).bind(cq) });
-  cq = [...cq, call].sort((l, r) => l.time - r.time);
+export const add = (call) : httpCall => {
+  //TODO: Uncomment and Enable these once add has been tested
+  // const applicableMiddleware = middleware.filter(m => m.type === 'ADD');
+  // applicableMiddleware.forEach((m) => { m.exec(call).bind(cq) });
+  if(!!CallQueue){
+    CallQueue = [...CallQueue, call].sort((l, r) => l.time - r.time);
+  }
+  else {
+    CallQueue = [call];
+  }
+
+  console.log("IN ADD");
+  console.log(JSON.stringify(CallQueue, null, 2));
   return call;
 };
 
-export const pop = (cq) : httpCall => {
-  if (!cq || cq.length === 0) return null;
-  const first = cq[0];
-  const applicableMiddleware = middleware.filter(m => m.type === 'POP');
-  applicableMiddleware.forEach((m) => { m.exec(first).bind(cq) });
-  cq = cq.slice(1, CallQueue.length);
+export const pop = () : httpCall => {
+  if (!CallQueue || CallQueue.length === 0) return null;
+  const first = CallQueue[0];
+  //TODO: Uncomment and Enable these once pop has been tested
+  // const applicableMiddleware = middleware.filter(m => m.type === 'POP');
+  // applicableMiddleware.forEach((m) => { m.exec(first).bind(cq) });
+  CallQueue = CallQueue.slice(1, CallQueue.length);
   return first;
 };
 
