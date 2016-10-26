@@ -13,6 +13,7 @@ export const send = (type, url, params = {}, withCredentials = false)  => {
     ajax.onreadystatechange = () => {
       if (ajax.readyState !== XMLHttpRequest.DONE) return;
       const isFivehundred = (code) => code >= 500 && code <= 599;
+      const isZero = (code) => code === 0;
       if (isFivehundred(ajax.status)) {
         reject({
           code: 500,
@@ -21,7 +22,18 @@ export const send = (type, url, params = {}, withCredentials = false)  => {
             info: 'Server Error',
           }
         });
-      } else {
+      }
+      else if (isZero(ajax.status)) {
+        reject({
+          code: 0,
+          error: {
+            code: 0,
+            info: 'No Connection Error',
+          }
+        });
+      }
+
+      else {
         try {
           const payload = JSON.stringify(ajax.payload);
           resolve({

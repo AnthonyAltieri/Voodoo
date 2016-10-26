@@ -172,14 +172,8 @@
 	        if (_this.heartbeat.isAlive || typeof _this.heartbeat.isAlive === 'undefined') {
 	          Ajax.send(type, url, params, withCredentials).then(function (payload) {
 	            console.log(".then now gonna resolve payload");
-	            if (payload.code !== 0) {
-	              console.log(payload);
-	              resolve(payload);
-	            } else {
-	              console.log("Payload couldn't be resolved code was found to be 0");
-	              _this.heartbeat.forceDead();
-	              _this.http(type, url, params, withCredentials);
-	            }
+	            console.log(payload);
+	            resolve(payload);
 	          }).catch(function () {
 	            console.log("Send caught an error");
 	            _this.heartbeat.forceDead();
@@ -234,6 +228,7 @@
 	    if (!!CQ.get()) {
 	      CQ.get().forEach(function (c) {
 	        _this2.http(c.type, c.url, c.params, c.withCredentials).then(function (payload) {
+	          //TODO: Enable this for response handling
 	          // const response = this.hub[c.responseTag];
 	          // if (typeof response === 'function') {
 	          //   response(payload);
@@ -521,12 +516,23 @@
 	      var isFivehundred = function isFivehundred(code) {
 	        return code >= 500 && code <= 599;
 	      };
+	      var isZero = function isZero(code) {
+	        return code === 0;
+	      };
 	      if (isFivehundred(ajax.status)) {
 	        reject({
 	          code: 500,
 	          error: {
 	            code: 500,
 	            info: 'Server Error'
+	          }
+	        });
+	      } else if (isZero(ajax.status)) {
+	        reject({
+	          code: 0,
+	          error: {
+	            code: 0,
+	            info: 'No Connection Error'
 	          }
 	        });
 	      } else {

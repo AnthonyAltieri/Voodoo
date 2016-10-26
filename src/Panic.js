@@ -32,16 +32,10 @@ class Panic {
           .send(type, url, params, withCredentials)
           .then((payload) =>
                   {
-                    console.log(".then now gonna resolve payload");
-                     if(payload.code !== 0){
-                       console.log(payload);
-                       resolve(payload);
-                     }
-                     else{
-                       console.log("Payload couldn't be resolved code was found to be 0");
-                       this.heartbeat.forceDead();
-                       this.http(type, url, params, withCredentials);
-                     }
+                      console.log(".then now gonna resolve payload");
+                      console.log(payload);
+                      resolve(payload);
+
                    })
           .catch(() => {
             console.log("Send caught an error");
@@ -90,6 +84,7 @@ function onAlive() {
         .forEach((c) => {
           this.http(c.type, c.url, c.params, c.withCredentials)
             .then((payload) => {
+              //TODO: Enable this for response handling
               // const response = this.hub[c.responseTag];
               // if (typeof response === 'function') {
               //   response(payload);
