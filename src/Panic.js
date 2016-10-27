@@ -17,6 +17,7 @@ type options = {
 
 class Panic {
   constructor(hub, endpoint: string, options: options) {
+    console.log('ctor Panic');
     CQ.init();
     this.heartbeat = new Heartbeat(endpoint, options);
     this.unsubscribeOnAlive = this.heartbeat.subscribe('ALIVE', onAlive.bind(this));
@@ -30,17 +31,16 @@ class Panic {
       if (this.heartbeat.isAlive || typeof this.heartbeat.isAlive==='undefined') {
         Ajax
           .send(type, url, params, withCredentials)
-          .then((payload) =>
-                  {
-                      console.log(".then now gonna resolve payload");
-                      console.log(payload);
-                      resolve(payload);
+          .then((payload) => {
+              console.log(".then now gonna resolve payload");
+              console.log(payload);
+              resolve(payload);
 
-                   })
+           })
           .catch(() => {
-            console.log("Send caught an error");
-            this.heartbeat.forceDead();
-            this.http(type, url, params, withCredentials);
+              console.log("from Send caught an error in Panic's http");
+              this.heartbeat.forceDead();
+              this.http(type, url, params, withCredentials);
           })
       } else {
         console.log("Gonna Add to CQ");
@@ -51,7 +51,7 @@ class Panic {
           params,
           withCredentials,
           responseTag,
-        });
+        }, CQ.get());
 
       }
     })
@@ -76,7 +76,6 @@ function onAlive() {
     // Going from dead to alive
     this.priorAliveStatus = true;
     console.log("Prior Alive set to true");
-    console.log(JSON.stringify(CQ.get(), null, 2));
     //If calls exist on CQ, we will now attempt to make them
     if(!!CQ.get()){
       CQ
@@ -84,15 +83,18 @@ function onAlive() {
         .forEach((c) => {
           this.http(c.type, c.url, c.params, c.withCredentials)
             .then((payload) => {
+              CQ.pop(CQ.get());
+              console.log("FOR EACH INSIDE ON ALIVE PRIOR STATUS");
+              console.log(JSON.stringify(CQ.get(), null, 2));
               //TODO: Enable this for response handling
               // const response = this.hub[c.responseTag];
               // if (typeof response === 'function') {
               //   response(payload);
               // }
-              console.log("Call Made: ");
-              console.log(JSON.stringify(c, null, 2));
-              console.log("Response: ");
-              console.log(JSON.stringify(payload, null, 2));
+              // console.log("Call Made: ");
+              // console.log(JSON.stringify(c, null, 2));
+              // console.log("Response: ");
+              // console.log(JSON.stringify(payload, null, 2));
             })
         })
     }

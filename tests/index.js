@@ -33,7 +33,7 @@ function testPost() {
 function testLocal() {
   Storage.set('key', 'value');
   const obj = Storage.get('key');
-  obj.foo();
+  //obj.foo();
 }
 
 const testButton = document.createElement('button');

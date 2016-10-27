@@ -30,37 +30,50 @@ export const init = (validTimeDif = TWO_HOURS_MILLISECONDS) => {
   try {
     const priorState = Storage.get(CQ_KEY);
     const timeDiff = (time) => new Date().getTime() - time;
-    const isValidPriorState = timeDiff(priorState.time) < validTimeDif;
+    const isValidPriorState = !!priorState
+        ? timeDiff(priorState.time) < validTimeDif
+        : false;
     CallQueue = !!priorState && isValidPriorState ? priorState.cq : [];
+    if(CallQueue.length>0){
+     //Prior Call Queue exists
+    }else{
+      //No Call Queue Exists
+    }
     middleware = [...defaultMiddleware];
+    console.log("init");
+    console.log(middleware);
   } catch (e) {
     // Silently fail
+    console.log('error', e);
   }
 };
 
-export const add = (call) : httpCall => {
+export const add = (call, cq) : httpCall => {
   //TODO: Uncomment and Enable these once add has been tested
-  // const applicableMiddleware = middleware.filter(m => m.type === 'ADD');
-  // applicableMiddleware.forEach((m) => { m.exec(call).bind(cq) });
-  if(!!CallQueue){
-    CallQueue = [...CallQueue, call].sort((l, r) => l.time - r.time);
+
+  if(!!cq){
+    cq = [...cq, call].sort((l, r) => l.time - r.time);
   }
   else {
-    CallQueue = [call];
+    cq = [call];
   }
-
-  console.log("IN ADD");
-  console.log(JSON.stringify(CallQueue, null, 2));
+  CallQueue = cq;
+  const applicableMiddleware = middleware.filter(m => m.type === 'ADD');
+  // applicableMiddleware.forEach((m) => {m.exec.bind(cq); });
+  applicableMiddleware.forEach((m) => {m.exec(call, cq)});
+  console.log("IN ADD in CallQueue");
+  // console.log(JSON.stringify(cq, null, 2));
   return call;
 };
 
-export const pop = () : httpCall => {
-  if (!CallQueue || CallQueue.length === 0) return null;
-  const first = CallQueue[0];
+export const pop = (cq) : httpCall => {
+  if (!cq || cq.length === 0) return null;
+  const first = cq[0];
   //TODO: Uncomment and Enable these once pop has been tested
-  // const applicableMiddleware = middleware.filter(m => m.type === 'POP');
-  // applicableMiddleware.forEach((m) => { m.exec(first).bind(cq) });
-  CallQueue = CallQueue.slice(1, CallQueue.length);
+  const applicableMiddleware = middleware.filter(m => m.type === 'POP');
+  applicableMiddleware.forEach((m) => { m.exec(cq) });
+  cq = cq.slice(1, cq.length);
+  CallQueue = cq;
   return first;
 };
 

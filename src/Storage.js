@@ -23,6 +23,7 @@ export const set = (key, value) => {
 };
 
 export const get = (key) => {
+  // console.log('get Storage');
   if (typeof window.localStorage === 'undefined') {
     const cookies = document.cookie.split(';');
     cookies.forEach((c) => {
@@ -31,6 +32,8 @@ export const get = (key) => {
         try {
           return JSON.stringify(cookieValue);
         } catch (e) {
+          console.log('e in get', e);
+
           return false;
         }
       }
@@ -41,6 +44,7 @@ export const get = (key) => {
     try {
       return JSON.parse(serialized);
     } catch (e) {
+      console.log('e in get', e);
       return undefined;
     }
   }

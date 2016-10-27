@@ -98,7 +98,7 @@
 	function testLocal() {
 	  Storage.set('key', 'value');
 	  var obj = Storage.get('key');
-	  obj.foo();
+	  //obj.foo();
 	}
 
 	var testButton = document.createElement('button');
@@ -156,6 +156,7 @@
 	  function Panic(hub, endpoint, options) {
 	    _classCallCheck(this, Panic);
 
+	    console.log('ctor Panic');
 	    CQ.init();
 	    this.heartbeat = new _Heartbeat2.default(endpoint, options);
 	    this.unsubscribeOnAlive = this.heartbeat.subscribe('ALIVE', onAlive.bind(this));
@@ -175,7 +176,7 @@
 	            console.log(payload);
 	            resolve(payload);
 	          }).catch(function () {
-	            console.log("Send caught an error");
+	            console.log("from Send caught an error in Panic's http");
 	            _this.heartbeat.forceDead();
 	            _this.http(type, url, params, withCredentials);
 	          });
@@ -188,7 +189,7 @@
 	            params: params,
 	            withCredentials: withCredentials,
 	            responseTag: responseTag
-	          });
+	          }, CQ.get());
 	        }
 	      });
 	    }
@@ -223,20 +224,22 @@
 	    // Going from dead to alive
 	    this.priorAliveStatus = true;
 	    console.log("Prior Alive set to true");
-	    console.log(JSON.stringify(CQ.get(), null, 2));
 	    //If calls exist on CQ, we will now attempt to make them
 	    if (!!CQ.get()) {
 	      CQ.get().forEach(function (c) {
 	        _this2.http(c.type, c.url, c.params, c.withCredentials).then(function (payload) {
+	          CQ.pop(CQ.get());
+	          console.log("FOR EACH INSIDE ON ALIVE PRIOR STATUS");
+	          console.log(JSON.stringify(CQ.get(), null, 2));
 	          //TODO: Enable this for response handling
 	          // const response = this.hub[c.responseTag];
 	          // if (typeof response === 'function') {
 	          //   response(payload);
 	          // }
-	          console.log("Call Made: ");
-	          console.log(JSON.stringify(c, null, 2));
-	          console.log("Response: ");
-	          console.log(JSON.stringify(payload, null, 2));
+	          // console.log("Call Made: ");
+	          // console.log(JSON.stringify(c, null, 2));
+	          // console.log("Response: ");
+	          // console.log(JSON.stringify(payload, null, 2));
 	        });
 	      });
 	    }
@@ -300,38 +303,57 @@
 	    var timeDiff = function timeDiff(time) {
 	      return new Date().getTime() - time;
 	    };
-	    var isValidPriorState = timeDiff(priorState.time) < validTimeDif;
+	    var isValidPriorState = !!priorState ? timeDiff(priorState.time) < validTimeDif : false;
 	    CallQueue = !!priorState && isValidPriorState ? priorState.cq : [];
+	    if (CallQueue.length > 0) {
+	      //Prior Call Queue exists
+	    } else {
+	        //No Call Queue Exists
+	      }
 	    middleware = [].concat(defaultMiddleware);
+	    console.log("init");
+	    console.log(middleware);
 	  } catch (e) {
 	    // Silently fail
+	    console.log('error', e);
 	  }
 	};
 
-	var add = exports.add = function add(call) {
+	var add = exports.add = function add(call, cq) {
 	  //TODO: Uncomment and Enable these once add has been tested
-	  // const applicableMiddleware = middleware.filter(m => m.type === 'ADD');
-	  // applicableMiddleware.forEach((m) => { m.exec(call).bind(cq) });
-	  if (!!CallQueue) {
-	    CallQueue = [].concat(_toConsumableArray(CallQueue), [call]).sort(function (l, r) {
+
+	  if (!!cq) {
+	    cq = [].concat(_toConsumableArray(cq), [call]).sort(function (l, r) {
 	      return l.time - r.time;
 	    });
 	  } else {
-	    CallQueue = [call];
+	    cq = [call];
 	  }
-
-	  console.log("IN ADD");
-	  console.log(JSON.stringify(CallQueue, null, 2));
+	  CallQueue = cq;
+	  var applicableMiddleware = middleware.filter(function (m) {
+	    return m.type === 'ADD';
+	  });
+	  // applicableMiddleware.forEach((m) => {m.exec.bind(cq); });
+	  applicableMiddleware.forEach(function (m) {
+	    m.exec(call, cq);
+	  });
+	  console.log("IN ADD in CallQueue");
+	  // console.log(JSON.stringify(cq, null, 2));
 	  return call;
 	};
 
-	var pop = exports.pop = function pop() {
-	  if (!CallQueue || CallQueue.length === 0) return null;
-	  var first = CallQueue[0];
+	var pop = exports.pop = function pop(cq) {
+	  if (!cq || cq.length === 0) return null;
+	  var first = cq[0];
 	  //TODO: Uncomment and Enable these once pop has been tested
-	  // const applicableMiddleware = middleware.filter(m => m.type === 'POP');
-	  // applicableMiddleware.forEach((m) => { m.exec(first).bind(cq) });
-	  CallQueue = CallQueue.slice(1, CallQueue.length);
+	  var applicableMiddleware = middleware.filter(function (m) {
+	    return m.type === 'POP';
+	  });
+	  applicableMiddleware.forEach(function (m) {
+	    m.exec(cq);
+	  });
+	  cq = cq.slice(1, cq.length);
+	  CallQueue = cq;
 	  return first;
 	};
 
@@ -388,38 +410,93 @@
 	                                                                                                                                                                                                     */
 
 	var CQ_KEY = 'CallQueue';
+	//
+	// export const addStorage = () => ({
+	//   type: 'ADD',
+	//   exec: (call) => {
+	//     const storedCQ = Storage.get(CQ_KEY);
+	//     const time = new Date().getTime();
+	//     try {
+	//       Storage.set(
+	//         CQ_KEY,
+	//         storedCQ
+	//           ? {time, cq: [...storedCQ, call].sort((l, r) => l.time - r.time)}
+	//           : {time, cq: [call]}
+	//       );
+	//     } catch (e) {
+	//       // Silently Fail
+	//     }
+	//   },
+	// });
+	//
+	//
+	// export const popStorage = () => ({
+	//   type: 'POP',
+	//   exec: () => {
+	//     const storedCQ = Storage.get(CQ_KEY);
+	//     if (!storedCQ) return;
+	//     const time = new Date().getTime();
+	//     try {
+	//       Storage.set(
+	//         CQ_KEY,
+	//         { time, cq: storedCQ.slice(1, storedCQ.length) }
+	//       );
+	//     } catch (e) {
+	//       // Silently Fail
+	//     }
+	//   },
+	// });
 
-	var addStorage = exports.addStorage = function addStorage(call) {
-	  return {
-	    type: 'ADD',
-	    exec: function exec() {
-	      var storedCQ = Storage.get(CQ_KEY);
-	      var time = new Date().getTime();
-	      try {
-	        Storage.set(CQ_KEY, storedCQ ? { time: time, cq: [].concat(_toConsumableArray(storedCQ), [call]).sort(function (l, r) {
-	            return l.time - r.time;
-	          }) } : { time: time, cq: [call] });
-	      } catch (e) {
-	        // Silently Fail
-	      }
-	    }
-	  };
+
+	/*
+	Takes cq just in case it needs to perform some logic on it here
+	 */
+	var add = function add(call, cq) {
+	  console.log("Add called for call in storage mids");
+	  var storedCQ = Storage.get(CQ_KEY);
+
+	  console.log(JSON.stringify(!!storedCQ ? storedCQ : "NO STORED CQ"));
+
+	  var time = new Date().getTime();
+	  try {
+	    Storage.set(CQ_KEY, !!storedCQ ? { time: time, cq: [].concat(_toConsumableArray(storedCQ.cq), [call]).sort(function (l, r) {
+	        return l.time - r.time;
+	      }) } : { time: time, cq: [call] });
+	    console.log("After the set");
+	    storedCQ = Storage.get(CQ_KEY);
+	    console.log(JSON.stringify(!!storedCQ ? storedCQ : "NO STORED CQ"));
+	  } catch (e) {
+	    console.log(e);
+	  }
 	};
 
-	var popStorage = exports.popStorage = function popStorage() {
-	  return {
-	    type: 'POP',
-	    exec: function exec() {
-	      var storedCQ = Storage.get(CQ_KEY);
-	      if (!storedCQ) return;
-	      var time = new Date().getTime();
-	      try {
-	        Storage.set(CQ_KEY, { time: time, cq: storedCQ.slice(1, storedCQ.length) });
-	      } catch (e) {
-	        // Silently Fail
-	      }
-	    }
-	  };
+	/*
+	 Takes cq just in case it needs to perform some logic on it before saving
+	 */
+	var pop = function pop(cq) {
+	  console.log("Pop called for call in storage mids");
+	  var storedCQ = Storage.get(CQ_KEY);
+	  console.log(JSON.stringify(storedCQ));
+	  if (!storedCQ) return;
+	  var time = new Date().getTime();
+	  try {
+	    Storage.set(CQ_KEY, { time: time, cq: storedCQ.cq.slice(1, storedCQ.cq.length) });
+	    console.log("After the set in POP");
+	    console.log(JSON.stringify(Storage.get(CQ_KEY)));
+	  } catch (e) {
+	    console.log(e);
+	    // Silently Fail
+	  }
+	};
+
+	var addStorage = exports.addStorage = {
+	  type: 'ADD',
+	  exec: add
+	};
+
+	var popStorage = exports.popStorage = {
+	  type: 'POP',
+	  exec: pop
 	};
 
 /***/ },
@@ -458,6 +535,7 @@
 	};
 
 	var get = exports.get = function get(key) {
+	  // console.log('get Storage');
 	  if (typeof window.localStorage === 'undefined') {
 	    var cookies = document.cookie.split(';');
 	    cookies.forEach(function (c) {
@@ -472,6 +550,8 @@
 	        try {
 	          return JSON.stringify(cookieValue);
 	        } catch (e) {
+	          console.log('e in get', e);
+
 	          return false;
 	        }
 	      }
@@ -482,6 +562,7 @@
 	    try {
 	      return JSON.parse(serialized);
 	    } catch (e) {
+	      console.log('e in get', e);
 	      return undefined;
 	    }
 	  }
