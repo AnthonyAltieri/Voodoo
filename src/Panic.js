@@ -4,7 +4,7 @@
 
 import * as CQ from './CallQueue';
 import * as Ajax from './Ajax';
-import Hub from './Hub';
+import Voodoo from './Voodoo';
 import Heartbeat from './Heartbeat';
 
 type HTTP_TYPE = 'POST' | 'GET';
@@ -84,17 +84,7 @@ function onAlive() {
           this.http(c.type, c.url, c.params, c.withCredentials)
             .then((payload) => {
               CQ.pop(CQ.get());
-              console.log("FOR EACH INSIDE ON ALIVE PRIOR STATUS");
-              console.log(JSON.stringify(CQ.get(), null, 2));
-              //TODO: Enable this for response handling
-              // const response = this.hub[c.responseTag];
-              // if (typeof response === 'function') {
-              //   response(payload);
-              // }
-              // console.log("Call Made: ");
-              // console.log(JSON.stringify(c, null, 2));
-              // console.log("Response: ");
-              // console.log(JSON.stringify(payload, null, 2));
+              Voodoo.perform('TEST_ONE', payload);
             })
         })
     }

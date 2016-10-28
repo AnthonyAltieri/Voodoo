@@ -61,9 +61,9 @@
 
 	var Storage = _interopRequireWildcard(_Storage);
 
-	var _Hub = __webpack_require__(7);
+	var _Voodoo = __webpack_require__(7);
 
-	var _Hub2 = _interopRequireDefault(_Hub);
+	var _Voodoo2 = _interopRequireDefault(_Voodoo);
 
 	function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
 
@@ -85,7 +85,18 @@
 
 	function test() {
 	  console.log('Beginning test()');
-	  panic = new _Panic2.default(_Hub2.default, HEARTBEAT_ENDPOINT, {
+	  _Voodoo2.default.createSource({
+	    'zombie': function zombie(tag, payload) {
+	      switch (tag) {
+	        case 'TEST_ONE':
+	          {
+	            console.log('TEST_ONE payload', JSON.stringify(payload, null, 2));
+	            break;
+	          }
+	      }
+	    }
+	  });
+	  panic = new _Panic2.default(null, HEARTBEAT_ENDPOINT, {
 	    type: TYPE,
 	    secondsPerBeat: FIVE_SECONDS
 	  });
@@ -138,9 +149,9 @@
 
 	var Ajax = _interopRequireWildcard(_Ajax);
 
-	var _Hub = __webpack_require__(7);
+	var _Voodoo = __webpack_require__(7);
 
-	var _Hub2 = _interopRequireDefault(_Hub);
+	var _Voodoo2 = _interopRequireDefault(_Voodoo);
 
 	var _Heartbeat = __webpack_require__(8);
 
@@ -229,17 +240,7 @@
 	      CQ.get().forEach(function (c) {
 	        _this2.http(c.type, c.url, c.params, c.withCredentials).then(function (payload) {
 	          CQ.pop(CQ.get());
-	          console.log("FOR EACH INSIDE ON ALIVE PRIOR STATUS");
-	          console.log(JSON.stringify(CQ.get(), null, 2));
-	          //TODO: Enable this for response handling
-	          // const response = this.hub[c.responseTag];
-	          // if (typeof response === 'function') {
-	          //   response(payload);
-	          // }
-	          // console.log("Call Made: ");
-	          // console.log(JSON.stringify(c, null, 2));
-	          // console.log("Response: ");
-	          // console.log(JSON.stringify(payload, null, 2));
+	          _Voodoo2.default.perform('TEST_ONE', payload);
 	        });
 	      });
 	    }
@@ -654,22 +655,64 @@
 /* 7 */
 /***/ function(module, exports) {
 
-	"use strict";
+	'use strict';
 
 	Object.defineProperty(exports, "__esModule", {
 	  value: true
 	});
+
+	var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
+
+	function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
+
 	/**
 	 * @author Anthony Altieri on 10/22/16.
 	 */
 
-	var Hub = {
-	  test: function test(payload) {
-	    console.log(payload);
+	// Define Types
+	function createSource(source) {
+	  this.source = source;
+	}
+
+	function perform(tag, payload) {
+	  if (this.source === null) {
+	    throw new Error('Voodoo must have a source before using trickle');
 	  }
+	  var helper = function helper(obj, t, p) {
+	    var keys = Object.keys(obj);
+	    var values = [];
+	    keys.forEach(function (key) {
+	      values = [].concat(_toConsumableArray(values), [obj[key]]);
+	    });
+	    values.forEach(function (value) {
+	      switch (typeof value === 'undefined' ? 'undefined' : _typeof(value)) {
+	        case 'function':
+	          {
+	            value(tag, payload);
+	            break;
+	          }
+	        case 'object':
+	          {
+	            helper(value, tag, payload);
+	            break;
+	          }
+	        default:
+	          {
+	            throw new Error('Invalid value of type: ' + (typeof value === 'undefined' ? 'undefined' : _typeof(value)));
+	          }
+	      }
+	    });
+	  };
+	  helper(this.source, tag, payload);
+	}
+
+	var Voodoo = {
+	  createSource: createSource,
+	  perform: perform,
+	  source: null
 	};
 
-	exports.default = Hub;
+	exports.default = Voodoo;
 
 /***/ },
 /* 8 */

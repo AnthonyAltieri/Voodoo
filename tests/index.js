@@ -4,8 +4,7 @@
 
 import Panic from '../src/Panic';
 import * as Storage from '../src/Storage';
-import Hub from '../src/Hub';
-
+import Voodoo from '../src/Voodoo';
 
 const SERVER_PREFIX = 'http://159.203.234.179';
 const HEARTBEAT_ENDPOINT = 'http://159.203.234.179/isAlive';
@@ -16,11 +15,21 @@ const ONE_THIRD_SECOND = 0.33;
 const TYPE = 'POST';
 
 let panic;
-let i=1;
+let i = 1;
 
 function test() {
   console.log('Beginning test()');
-  panic = new Panic(Hub, HEARTBEAT_ENDPOINT, {
+  Voodoo.createSource({
+    'zombie': (tag, payload) => {
+      switch (tag) {
+        case 'TEST_ONE': {
+          console.log('TEST_ONE payload', JSON.stringify(payload, null ,2));
+          break;
+        }
+      }
+    }
+  });
+  panic = new Panic(null, HEARTBEAT_ENDPOINT, {
     type: TYPE,
     secondsPerBeat: FIVE_SECONDS,
   });
