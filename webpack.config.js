@@ -14,7 +14,7 @@ module.exports = {
   output: {
     path: path.join(__dirname, 'dist'),
     publicPath: '/static/',
-    filename: 'app.bundle.js',
+    filename: 'Voodoo.js',
   },
   plugins: [
     new HtmlWebpackPlugin({
