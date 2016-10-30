@@ -1,5 +1,8 @@
 ![Panic](https://raw.githubusercontent.com/AnthonyAltieri/PanicJS/master/logo.png)
-# **Voodoo**
+<p align="center">
+<img src="https://raw.githubusercontent.com/AnthonyAltieri/PanicJS/master/logo.png" />
+</p>
+  
 ## A framework for seamless offline and lie-fi handling for your HTTP logic
 ---  
   
