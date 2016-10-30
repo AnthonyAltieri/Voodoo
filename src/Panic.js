@@ -50,7 +50,7 @@ class Panic {
           url,
           params,
           withCredentials,
-          responseTag,
+          tag,
         }, CQ.get());
 
       }
