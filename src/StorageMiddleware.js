@@ -53,7 +53,6 @@ const add = function(call, cq){
 
   console.log(JSON.stringify(!!storedCQ ? storedCQ : "NO STORED CQ"));
 
-
   const time = new Date().getTime();
   try {
     Storage.set(

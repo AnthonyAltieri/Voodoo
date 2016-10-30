@@ -26,7 +26,7 @@ class Panic {
   }
 
 
-  http(type: HTTP_TYPE, url, params, responseTag, withCredentials) {
+  http(type: HTTP_TYPE, url, params, tag, withCredentials) {
     return new Promise((resolve, reject) => {
       if (this.heartbeat.isAlive || typeof this.heartbeat.isAlive==='undefined') {
         Ajax

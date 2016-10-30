@@ -177,7 +177,7 @@
 
 	  _createClass(Panic, [{
 	    key: 'http',
-	    value: function http(type, url, params, responseTag, withCredentials) {
+	    value: function http(type, url, params, tag, withCredentials) {
 	      var _this = this;
 
 	      return new Promise(function (resolve, reject) {
