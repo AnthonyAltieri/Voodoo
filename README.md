@@ -1,4 +1,3 @@
-![Panic](https://raw.githubusercontent.com/AnthonyAltieri/PanicJS/master/logo.png)
 <p align="center">
 <img src="https://raw.githubusercontent.com/AnthonyAltieri/PanicJS/master/logo.png" />
 </p>
