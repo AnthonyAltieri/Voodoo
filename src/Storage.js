@@ -1,3 +1,5 @@
+// @flow
+
 /**
  * @author Anthony Altieri on 10/14/16.
  * @author Bharat Batra on 10/14/16.

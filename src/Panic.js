@@ -1,3 +1,5 @@
+// @flow
+
 /**
  * @author Anthony Altieri on 10/22/16.
  */
