@@ -1,5 +1,6 @@
 /**
  * @author Anthony Altieri on 10/15/16.
+ * @author Bharat Batra on 10/15/16
  */
 
 import Panic from '../src/Panic';
