@@ -3,6 +3,7 @@
  * @author Bharat Batra on 10/14/16.
  */
 
+
 export const send = (type, url, params = {}, withCredentials = false)  => {
   console.log('send()')
   return new Promise((resolve, reject) => {
@@ -66,3 +67,11 @@ export const send = (type, url, params = {}, withCredentials = false)  => {
     return;
   })
 };
+
+export const post = (url, params, withCredentials = true) {
+  return new Promise((resolve, reject) => {
+    send('POST', url, params, withCredentials)
+      .then((payload) => { resolve(payload) })
+      .catch((error) => { reject(error) })
+  });
+}
