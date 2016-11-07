@@ -68,7 +68,7 @@ export const send = (type, url, params = {}, withCredentials = false)  => {
   })
 };
 
-export const post = (url, params, withCredentials = true) {
+export const post = (url, params, withCredentials = true) => {
   return new Promise((resolve, reject) => {
     send('POST', url, params, withCredentials)
       .then((payload) => { resolve(payload) })
